@@ -1,6 +1,6 @@
 # 基于DataX的DolphinDB数据同步插件
 ## 1. 使用场景
-DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，但是会随着时间少量增加、并且数据分散在不同的数据库系统中。
+DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，但是会随着时间增加、并且数据分散在不同的数据库系统中。
 
 ## 2. DataX离线数据同步
 DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能, [DataX已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
