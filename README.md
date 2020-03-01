@@ -1,3 +1,4 @@
+# DataX-dolphindbwriter 基于DataX的DolphiNDB数据同步插件
 ## 1. 使用场景
 DolphinDBWriter-DataX插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，但是会随着时间少量增加、并且数据分散在不同的数据库系统中。
 
@@ -11,40 +12,18 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据的场景。
 DolphinDBWriter底层依赖于 DolphinDB Java API，每次达到10000条记录时写入一次DolphinDB,最后不满10000条的数据,会在后置事件(POST)触发时写入。
 
-### 利用shell脚本实现DataX定时增量数据同步
-
-DataX从设计上用于离线数据的一次性同步场景，缺乏对在线数据增量更新的内置支持，但因为DataX的灵活架构，我们可以通过shell或python脚本等工程方式实现增量同步。
-
-由于 DataX 支持非常灵活的配置， 一种相对简单并且可靠的思路就是根据时间戳动态修改配置文件：
-
-* 利用 DataX 的 reader 去目标数据库读取数据，并记录最新时间戳。
-* 将这个最新时间戳写入到一个json文本文件(op_table.json)；
-* 再次执行同步时用脚本来读取json文本文件， 并动态修改同步的配置文件；
-* 执行修改后的配置文件(run_job.json)，进行增量同步。
-
-本脚本默认约定，每一个数据表中都有OPDATE和OPMODE两个字段，用于标记操作时间和操作方式。OPMODE=0为新增数据，OPMODE=1，2为更新和删除数据。在运行时，根据保存的时间戳动态为oraclereader增加一个where配置项。
-
-新增数据
-```
-OPMODE = 0 AND OPDATE > to_date('[最新时间戳]', 'YYYY-MM-DD HH24:MI:SS')
-```
-更新数据
-```
-OPMODE > 0 AND OPDATE > to_date('[最新时间戳]', 'YYYY-MM-DD HH24:MI:SS')
-```
-
 ## 3. 使用方法
 详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。
 
-#### 3.1 下载部署DataX
+### 3.1 下载部署DataX
 
 Download [DataX下载地址](http://datax-opensource.oss-cn-hangzhou.aliyuncs.com/datax.tar.gz)
 
-#### 3.2 部署DataX-DolphinDBWriter插件
+### 3.2 部署DataX-DolphinDBWriter插件
 
 将 dolphindbwriter 整个目录拷贝到plugin目录下，即可以使用。
 
-#### 3.3 执行DataX任务
+### 3.3 执行DataX任务
 
 进入datax/bin目录下，用 python 执行 datax.py 脚本，并指定配置文件地址，示例如下：
 ```
@@ -52,7 +31,7 @@ cd /root/datax/bin/
 python datax.py /root/datax/myconf/BASECODE.json
 ```
 
-#### 3.4 导入实例
+### 3.4 导入实例
 使用DataX绝大部分工作都是通过配置来完成，包括双边的数据库连接信息和需要同步的数据表结构信息等。
 
 #### 3.4.1 全量导入
@@ -98,9 +77,28 @@ python datax.py /root/datax/myconf/BASECODE.json
 
 * 定时同步
 
-将增量同步脚本包ddb_script，解压到磁盘目录，比如/root/ddb_script/。
+    * 利用shell脚本实现DataX定时增量数据同步
 
-假设datax根目录为/root/datax, 配置文件放在/root/datax/myconf/目录下，则使用方法
+    DataX从设计上用于离线数据的一次性同步场景，缺乏对在线数据增量更新的内置支持，但因为DataX的灵活架构，我们可以通过shell或python脚本等工程方式实现增量同步。
+
+    由于 DataX 支持非常灵活的配置， 一种相对简单并且可靠的思路就是根据时间戳动态修改配置文件：
+
+        利用 DataX 的 reader 去目标数据库读取数据，并记录最新时间戳。
+        将这个最新时间戳写入到一个json文本文件(op_table.json)；
+        再次执行同步时用脚本来读取json文本文件， 并动态修改同步的配置文件；
+        执行修改后的配置文件(run_job.json)，进行增量同步。
+
+    本脚本默认约定，每一个数据表中都有OPDATE和OPMODE两个字段，用于标记操作时间和操作方式。OPMODE=0为新增数据，OPMODE=1，2为更新和删除数据。在运行时，根据保存的时间戳动态为oraclereader增加一个where配置项：
+    ```
+    OPMODE = 0 AND OPDATE > to_date('[最新时间戳]', 'YYYY-MM-DD HH24:MI:SS') //新增数据
+    
+    OPMODE > 0 AND OPDATE > to_date('[最新时间戳]', 'YYYY-MM-DD HH24:MI:SS') //更新数据
+    ```
+
+定时同步是通过python脚本实现，它在datax的发布包中包含。
+增量同步脚本在根目录ddb_script下，下载后保存在本地磁盘比如/root/ddb_script/。
+
+假设datax根目录为/root/datax, 配置文件放在/root/datax/myconf/目录下，则增量同步的使用方法为
 ```
 cd /root/ddb_script/
 python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_type]
