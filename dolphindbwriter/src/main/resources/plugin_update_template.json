@@ -1,0 +1,85 @@
+{
+  "job": {
+    "setting": {
+      "speed": {
+        "channel": 1
+      }
+    },
+    "content": [
+      {
+        "reader": {
+          "name": "oraclereader",
+          "parameter": {
+            "username": "WIND",
+            "password": "DolphinDB123",
+            "column": [
+              "OBJECT_ID,EVENT_ID,S_INFO_WINDCODE,S_ACTIVITIESTYPE,S_SURVEYDATE,S_SURVEYTIME,ANN_DT,OPDATE,OPMODE"
+            ],
+            "connection": [
+              {
+                "table": [
+                  "ASHAREISACTIVITY"
+                ],
+                "jdbcUrl": [
+                  "jdbc:oracle:thin:@115.239.209.189:21521:helowin"
+                ]
+              }
+            ],
+            "where": "OPMODE = 1 AND OPDATE > to_date('2020-02-16 15:22:27', 'YYYY-MM-DD HH24:MI:SS')"
+          }
+        },
+        "writer": {
+          "name": "dolphindbwriter",
+          "parameter": {
+            "userId": "admin",
+            "pwd": "123456",
+            "host": "115.239.209.189",
+            "port": 18548,
+            "dbName": "HXPDB",
+            "tableName": "ASHAREISACTIVITY",
+            "saveFunctionName":"savePartitionedData",
+            "table": [
+              {
+                "type": "DT_STRING",
+                "name": "OBJECT_ID",
+                "isKeyField": true
+              },
+              {
+                "type": "DT_STRING",
+                "name": "EVENT_ID"
+              },
+              {
+                "type": "DT_STRING",
+                "name": "S_INFO_WINDCODE"
+              },
+              {
+                "type": "DT_DOUBLE",
+                "name": "S_ACTIVITIESTYPE"
+              },
+              {
+                "type": "DT_STRING",
+                "name": "S_SURVEYDATE"
+              },
+              {
+                "type": "DT_STRING",
+                "name": "S_SURVEYTIME"
+              },
+              {
+                "type": "DT_STRING",
+                "name": "ANN_DT"
+              },
+              {
+                "type": "DT_TIMESTAMP",
+                "name": "OPDATE"
+              },
+              {
+                "type": "DT_STRING",
+                "name": "OPMODE"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

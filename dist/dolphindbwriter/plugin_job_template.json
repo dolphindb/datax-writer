@@ -1,0 +1,66 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel":1
+            }
+        },
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader",
+                    "parameter": {
+                        "username": "root",
+                        "password": "root",
+                        "column": ["*"],
+                        "connection": [
+                            {
+                                "table": [
+                                    "tbl_config"
+                                ],
+                                "jdbcUrl": [
+                                    "jdbc:mysql://118.178.93.164:3306/fleet?useUnicode=true&characterEncoding=utf8"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "writer": {
+                    "name": "dolphindbwriter",
+                    "parameter": {
+                        "userid": "admin",
+                        "pwd": "123456",
+                        "host":"saiying.imwork.net",
+                        "port":148,
+                        "dbpath":"/home/dolphindb/Documents/ddb",
+                        "tablename":"config",
+                        "table":[
+
+                            {
+                                "type":"INT",
+                                "name":"configIdx"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"name"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"value"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"value_type"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"description"
+                            }
+
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}
