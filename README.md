@@ -8,7 +8,7 @@ DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台�
 DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从源头数据源读取数据的Reader插件，以及向目标端写入数据的Writer插件。理论上DataX框架可以支持任意数据源类型的数据同步工作。每接入一套新数据源该新加入的数据源即可实现和现有的数据源互通。
 
 
-### DataX插件 ：dolphindbwriter
+#### DataX插件 ：dolphindbwriter
 基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据的场景。
 DolphinDBWriter底层依赖于 DolphinDB Java API，每次达到10000条记录时写入一次DolphinDB,最后不满10000条的数据,会在后置事件(POST)触发时写入。
 
