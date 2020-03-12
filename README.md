@@ -21,7 +21,7 @@ Download [DataX下载地址](http://datax-opensource.oss-cn-hangzhou.aliyuncs.co
 
 ### 3.2 部署DataX-DolphinDBWriter插件
 
-将 [dolphindbwriter](http://www.dolphindb.com/download/datax-dolphindbwriter.zip) 整个目录拷贝到plugin目录下，即可以使用。
+将 [dolphindbwriter](http://www.dolphindb.com/downloads/dolphindbwriter.zip) 整个目录拷贝到plugin目录下，即可以使用。
 
 ### 3.3 执行DataX任务
 
@@ -186,7 +186,8 @@ BASECODE.json
                                     "jdbc:oracle:thin:@127.0.0.1:1521:helowin"
                                 ]
                             }
-                        ]
+                        ],
+                        "where":"OPDATE > to_date('2020-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
                     }
                 },
                 "writer": {
@@ -199,7 +200,7 @@ BASECODE.json
                         "dbName": "TESTDB",
                         "tableName": "BASECODE",
                         "saveFunctionName":"savePartitionedData",
-                        "saveFunctionDef":"savePartitionedData",
+                        "saveFunctionDef":"def() {...}",
                         "table": [
                             {
                                 "type": "DT_DOUBLE",
