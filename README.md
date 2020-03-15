@@ -316,25 +316,25 @@ BASECODE.json
 	```
 	* name ：字段名称
 	* isKeyField：是否唯一键值，可以允许组合唯一键
-	* type 枚举值以及对应DataX数据类型如下。具体DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
-	```
-	 DT_DOUBLE: DOUBLE
-     DT_FLOAT:  DOUBLE
-     DT_BOOL:   BOOLEAN
-     DT_DATE:   DATE
-     DT_DATETIME: DATE
-     DT_TIME: DATE
-     DT_TIMESTAMP: DATE
-     DT_NANOTIME: DATE
-     DT_NANOTIMESTAMP: DATE
-     DT_INT: LONG
-     DT_LONG: LONG
-     DT_UUID: STRING
-     DT_SHORT: LONG
-     DT_STRING: STRING
-     DT_SYMBOL: STRING
-     DT_BYTE: BOOLEAN
-	```
+	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
+	DolphinDB类型 | 配置值 | DataX类型
+	---|---|---
+	 DOUBLE | DT_DOUBLE | DOUBLE
+     FLOAT|DT_FLOAT|DOUBLE|
+     BOOL|DT_BOOL|BOOLEAN
+     DATE|DT_DATE|DATE
+     DATETIME|DT_DATETIME| DATE
+     TIME|DT_TIME|DATE
+     TIMESTAMP|DT_TIMESTAMP| DATE
+     NANOTIME|DT_NANOTIME| DATE
+     NANOTIMETAMP|DT_NANOTIMETAMP| DATE
+     INT|DT_INT|LONG
+     LONG|DT_LONG|LONG
+     UUID|DT_UUID|STRING
+     SHORT|DT_SHORT|LONG
+     STRING|DT_STRING|STRING
+     SYMBOL|DT_SYMBOL|STRING
+	
 	* 必选：是 <br />
 	* 默认值：无 <br />
 
