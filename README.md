@@ -1,6 +1,6 @@
 # 基于DataX的DolphinDB数据同步插件
 ## 1. 使用场景
-DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，但是会随着时间增加、并且数据分散在不同的数据库系统中。
+DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少, 并且数据分散在不同的数据库系统中。
 
 ## 2. DataX离线数据同步
 DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能, [DataX已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
@@ -10,7 +10,7 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 
 #### DataX插件 ：dolphindbwriter
 基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据的场景。
-DolphinDBWriter底层依赖于 DolphinDB Java API，每次达到10000条记录时写入一次DolphinDB,最后不满10000条的数据,会在后置事件(POST)触发时写入。
+DolphinDBWriter底层依赖于 DolphinDB Java API，每次达到10000条记录时写入一次DolphinDB,最后不满10000条的数据,会在结束事件(POST)触发时写入。
 
 ## 3. 使用方法
 详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。
@@ -67,7 +67,7 @@ python datax.py /root/datax/myconf/BASECODE.json
         DolphinDB有多种数据落盘的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。
 
     
-当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
+    当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
 
     * 数据作为新增数据处理。这种方式处理后，数据表中存在重复键值。
     
@@ -79,7 +79,7 @@ python datax.py /root/datax/myconf/BASECODE.json
 
     * 利用shell脚本实现DataX定时增量数据同步
 
-    DataX从设计上用于离线数据的一次性同步场景，缺乏对在线数据增量更新的内置支持，但因为DataX的灵活架构，我们可以通过shell或python脚本等工程方式实现增量同步。
+    DataX从设计上用于离线数据的一次性同步场景，我们可以通过shell或python脚本等工程方式实现定时增量同步。
 
     由于 DataX 支持非常灵活的配置， 一种相对简单并且可靠的思路就是根据时间戳动态修改配置文件：
 
@@ -224,7 +224,9 @@ BASECODE.json
                             },
                             {
                                 "type": "DT_STRING",
-                                "name": "OBJECT_ID"
+                                "name": "OBJECT_ID",
+                                "isKeyField" :true
+                                
                             },
                             {
                                 "type": "DT_STRING",
@@ -346,3 +348,4 @@ BASECODE.json
     * 描述：自定义函数体定义。
 	* 必选：当saveFunctionName参数不为空且非两个枚举值之一时，此参数必填 <br />
 	* 默认值：无 <br />
+
