@@ -1,4 +1,4 @@
-# 基于DataX的DolphinDB数据同步插件
+# 基于DataX的DolphinDB数据导入工具
 ## 1. 使用场景
 DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少, 并且数据分散在不同的数据库系统中。
 
