@@ -317,6 +317,7 @@ BASECODE.json
 	* name ：字段名称
 	* isKeyField：是否唯一键值，可以允许组合唯一键
 	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
+	
 	DolphinDB类型 | 配置值 | DataX类型
 	---|---|---
 	 DOUBLE | DT_DOUBLE | DOUBLE
