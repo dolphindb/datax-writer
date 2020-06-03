@@ -35,7 +35,7 @@
             "pwd": "123456",
             "host": "115.239.209.189",
             "port": 18548,
-            "dbName": "HXPDB",
+            "dbPath": "HXPDB",
             "tableName": "ASHAREISACTIVITY",
             "saveFunctionName":"savePartitionedData",
             "table": [

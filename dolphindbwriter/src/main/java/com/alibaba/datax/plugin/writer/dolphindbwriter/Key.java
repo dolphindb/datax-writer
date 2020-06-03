@@ -19,7 +19,9 @@ public class Key {
 
     public final static String TABLE_NAME = "tableName";
 
-    public final static String DB_PATH = "dbName";
+    public final static String DB_NAME = "dbPath";
+
+    public final static String BATCH_SIZE = "batchSize";
 
     public final static String SAVE_FUNCTION_DEF = "saveFunctionDef";
 

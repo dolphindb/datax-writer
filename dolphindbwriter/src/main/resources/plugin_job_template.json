@@ -28,12 +28,12 @@
                 "writer": {
                     "name": "dolphindbwriter",
                     "parameter": {
-                        "userid": "admin",
+                        "userId": "admin",
                         "pwd": "123456",
                         "host":"saiying.imwork.net",
                         "port":148,
-                        "dbpath":"dfs://ddb",
-                        "tablename":"config",
+                        "dbPath":"dfs://ddb",
+                        "tableName":"config",
                         "table":[
 
                             {
@@ -59,7 +59,9 @@
 
                         ],
                         "saveFunctionName":"",
+                        "savePartitionDataRange" : "",
                         "saveFunctionDef":""
+
                     }
                 }
             }
