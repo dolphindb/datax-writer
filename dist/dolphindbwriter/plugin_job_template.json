@@ -19,7 +19,7 @@
                                     "tbl_config"
                                 ],
                                 "jdbcUrl": [
-                                    "jdbc:mysql://118.178.93.164:3306/fleet?useUnicode=true&characterEncoding=utf8"
+                                    "jdbc:mysql://localhost:3306/fleet?useUnicode=true&characterEncoding=utf8"
                                 ]
                             }
                         ]
@@ -28,12 +28,12 @@
                 "writer": {
                     "name": "dolphindbwriter",
                     "parameter": {
-                        "userid": "admin",
+                        "userId": "admin",
                         "pwd": "123456",
-                        "host":"saiying.imwork.net",
-                        "port":148,
-                        "dbpath":"/home/dolphindb/Documents/ddb",
-                        "tablename":"config",
+                        "host":"localhost",
+                        "port":8848,
+                        "dbPath":"dfs://ddb",
+                        "tableName":"config",
                         "table":[
 
                             {
