@@ -88,7 +88,7 @@ public class DolphinDbWriter extends Writer {
             while ((record = lineReceiver.getFromReader()) != null) {
                 recordToBasicTable(record, fieldArr);
                 List firstColumn = this.cols.get(fieldArr.getJSONObject(0).getString("name"));
-                if (firstColumn.size() >= batchSize) {
+                if (firstColumn.size() >= batchSize.intValue()) {
                     insertToDolphinDB(createUploadTable(fieldArr));
                     initColumn(fieldArr);
                 }
