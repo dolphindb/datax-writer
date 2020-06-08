@@ -308,6 +308,14 @@ BASECODE.json
 	* 必须: 是
 
 	* 默认值: 无
+	
+* **batchSize**
+
+	* 描述: datax每次写入dolphindb的批次记录数
+
+	* 必须: 否
+
+	* 默认值: 10,000,000
 
 * **table**
 
