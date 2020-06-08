@@ -350,13 +350,14 @@ BASECODE.json
 	* 默认值：无 <br />
 
 * **saveFunctionName**
-    * 描述：自定义数据处理函数，插件在接收到reader的数据后，会将数据提交到DolphinDB并听过tableInsert函数写入指定库表，如果有定义此参数，则会用本函数替换tableInsert函数。
+    * 描述：自定义数据处理函数。若未指定此配置，插件在接收到reader的数据后，会将数据提交到DolphinDB并通过tableInsert函数写入指定库表；如果定义此参数，则会用指定函数替换tableInsert函数。
     * 必选：否 <br />
-	* 枚举值： savePartitionedData(更新分布式表)/saveDimensionData(更新维度表) <br />
-	   当saveFunctionDef未定义或为空时, saveFunctionName可以取枚举值之一，对应用于更新分布式表和维度表的数据处理。
+	* 默认值： 无。 也可以指定自定义函数 <br />
+
+	插件内置了 savePartitionedData(更新分布式表)/saveDimensionData(更新维度表) 两个函数，当saveFunctionDef未定义或为空时, saveFunctionName可以取枚举值之一，对应用于更新分布式表和维度表的数据处理。
 
 * **saveFunctionDef**
-    * 描述：自定义函数体定义。
+    * 描述：数据入库自定义函数。此函数指 用dolphindb 脚本来实现的数据入库过程，此函数必须接受三个参数：dfsPath(分布式库路径), tbName(数据表名), data(从datax导入的数据,table格式)
 	* 必选：当saveFunctionName参数不为空且非两个枚举值之一时，此参数必填 <br />
 	* 默认值：无 <br />
 
