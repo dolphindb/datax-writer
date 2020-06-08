@@ -9,14 +9,9 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 
 
 #### DataX插件 ：dolphindbwriter
-<<<<<<< HEAD
-基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据。
 
+基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据。
 DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式，将数据写入分布式数据库。
-=======
-基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据的场景。
-DolphinDBWriter底层依赖于 DolphinDB Java API，每次达到10000条记录时写入一次DolphinDB,最后不满10000条的数据,会在结束事件(POST)触发时写入。
->>>>>>> 2dff81063a0a52acfd9e3911af4234aebc743f0e
 
 ## 3. 使用方法
 详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。
@@ -205,6 +200,7 @@ BASECODE.json
                         "port": 8848,
                         "dbPath": "dfs://TESTDB",
                         "tableName": "BASECODE",
+                        "batchSize": 1000000,
                         "saveFunctionName":"savePartitionedData",
                         "saveFunctionDef":"def() {...}",
                         "table": [
@@ -297,9 +293,9 @@ BASECODE.json
 
 	* 默认值：无 <br />
 
-* **dbName**
+* **dbPath**
 
-	* 描述：需要写入的目标分布式库名称，比如"MYDB",本参数值不包含数据库路径的"dfs://"部分。
+	* 描述：需要写入的目标分布式库名称，比如"dfs://MYDB"。
 
 	* 必选：是 <br />
 
@@ -312,6 +308,14 @@ BASECODE.json
 	* 必须: 是
 
 	* 默认值: 无
+	
+* **batchSize**
+
+	* 描述: datax每次写入dolphindb的批次记录数
+
+	* 必须: 否
+
+	* 默认值: 10,000,000
 
 * **table**
 
@@ -329,6 +333,7 @@ BASECODE.json
      FLOAT|DT_FLOAT|DOUBLE|
      BOOL|DT_BOOL|BOOLEAN
      DATE|DT_DATE|DATE
+     MONTH|DT_MONTH|DATE
      DATETIME|DT_DATETIME| DATE
      TIME|DT_TIME|DATE
      TIMESTAMP|DT_TIMESTAMP| DATE
