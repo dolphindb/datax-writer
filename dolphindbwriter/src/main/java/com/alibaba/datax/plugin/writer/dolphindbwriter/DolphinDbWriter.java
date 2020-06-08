@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -146,6 +147,14 @@ public class DolphinDbWriter extends Writer {
                     else
                         colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
                     break;
+                case DT_MONTH:
+                    if (column.getRawData() == null)
+                        colData.add(Integer.MIN_VALUE);
+                    else {
+                        LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                        colData.add(Utils.countMonths(d.getYear(),d.getMonthValue()));
+                    }
+                    break;
                 case DT_DATETIME:
                     if (column.getRawData() == null)
                         colData.add(Integer.MIN_VALUE);
@@ -212,6 +221,7 @@ public class DolphinDbWriter extends Writer {
                         colData.add((byte) -128);
                     else
                         colData.add(column.asBytes());
+                    break;
             }
         }
 
@@ -228,6 +238,7 @@ public class DolphinDbWriter extends Writer {
                     vec = new ArrayList<Boolean>();
                     break;
                 case DT_DATE:
+                case DT_MONTH:
                 case DT_DATETIME:
                 case DT_TIME:
                 case DT_INT:
@@ -285,6 +296,9 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_DATE:
                     vec = new BasicDateVector(colData);
+                    break;
+                case DT_MONTH:
+                    vec = new BasicMonthVector(colData);
                     break;
                 case DT_DATETIME:
                     vec = new BasicDateTimeVector(colData);
