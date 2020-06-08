@@ -293,9 +293,9 @@ BASECODE.json
 
 	* 默认值：无 <br />
 
-* **dbName**
+* **dbPath**
 
-	* 描述：需要写入的目标分布式库名称，比如"MYDB",本参数值不包含数据库路径的"dfs://"部分。
+	* 描述：需要写入的目标分布式库名称，比如"dfs://MYDB"。
 
 	* 必选：是 <br />
 
@@ -325,6 +325,7 @@ BASECODE.json
      FLOAT|DT_FLOAT|DOUBLE|
      BOOL|DT_BOOL|BOOLEAN
      DATE|DT_DATE|DATE
+     MONTH|DT_MONTH|DATE
      DATETIME|DT_DATETIME| DATE
      TIME|DT_TIME|DATE
      TIMESTAMP|DT_TIMESTAMP| DATE
