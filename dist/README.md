@@ -1,6 +1,6 @@
-# 基于DataX的DolphinDB数据导入工具
+# 基于DataX的DolphinDB数据同步插件
 ## 1. 使用场景
-DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少, 并且数据分散在不同的数据库系统中。
+DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，但是会随着时间增加、并且数据分散在不同的数据库系统中。
 
 ## 2. DataX离线数据同步
 DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能, [DataX已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
@@ -9,8 +9,8 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 
 
 #### DataX插件 ：dolphindbwriter
-
 基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据。
+
 DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式，将数据写入分布式数据库。
 
 ## 3. 使用方法
@@ -68,7 +68,7 @@ python datax.py /root/datax/myconf/BASECODE.json
         DolphinDB有多种数据落盘的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。
 
     
-    当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
+当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
 
     * 数据作为新增数据处理。这种方式处理后，数据表中存在重复键值。
     
@@ -80,7 +80,7 @@ python datax.py /root/datax/myconf/BASECODE.json
 
     * 利用shell脚本实现DataX定时增量数据同步
 
-    DataX从设计上用于离线数据的一次性同步场景，我们可以通过shell或python脚本等工程方式实现定时增量同步。
+    DataX从设计上用于离线数据的一次性同步场景，缺乏对在线数据增量更新的内置支持，但因为DataX的灵活架构，我们可以通过shell或python脚本等工程方式实现增量同步。
 
     由于 DataX 支持非常灵活的配置， 一种相对简单并且可靠的思路就是根据时间戳动态修改配置文件：
 
@@ -200,7 +200,6 @@ BASECODE.json
                         "port": 8848,
                         "dbPath": "dfs://TESTDB",
                         "tableName": "BASECODE",
-                        "batchSize": 1000000,
                         "saveFunctionName":"savePartitionedData",
                         "saveFunctionDef":"def() {...}",
                         "table": [
@@ -293,9 +292,9 @@ BASECODE.json
 
 	* 默认值：无 <br />
 
-* **dbPath**
+* **dbName**
 
-	* 描述：需要写入的目标分布式库名称，比如"dfs://MYDB"。
+	* 描述：需要写入的目标分布式库名称，比如"MYDB",本参数值不包含数据库路径的"dfs://"部分。
 
 	* 必选：是 <br />
 
@@ -308,14 +307,6 @@ BASECODE.json
 	* 必须: 是
 
 	* 默认值: 无
-	
-* **batchSize**
-
-	* 描述: datax每次写入dolphindb的批次记录数
-
-	* 必须: 否
-
-	* 默认值: 10,000,000
 
 * **table**
 
@@ -325,40 +316,35 @@ BASECODE.json
 	```
 	* name ：字段名称
 	* isKeyField：是否唯一键值，可以允许组合唯一键
-	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
-	
-	DolphinDB类型 | 配置值 | DataX类型
-	---|---|---
-	 DOUBLE | DT_DOUBLE | DOUBLE
-     FLOAT|DT_FLOAT|DOUBLE|
-     BOOL|DT_BOOL|BOOLEAN
-     DATE|DT_DATE|DATE
-     MONTH|DT_MONTH|DATE
-     DATETIME|DT_DATETIME| DATE
-     TIME|DT_TIME|DATE
-     TIMESTAMP|DT_TIMESTAMP| DATE
-     NANOTIME|DT_NANOTIME| DATE
-     NANOTIMETAMP|DT_NANOTIMETAMP| DATE
-     INT|DT_INT|LONG
-     LONG|DT_LONG|LONG
-     UUID|DT_UUID|STRING
-     SHORT|DT_SHORT|LONG
-     STRING|DT_STRING|STRING
-     SYMBOL|DT_SYMBOL|STRING
-	
+	* type 枚举值以及对应DataX数据类型如下。具体DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
+	```
+	 DT_DOUBLE: DOUBLE
+     DT_FLOAT:  DOUBLE
+     DT_BOOL:   BOOLEAN
+     DT_DATE:   BOOLEAN
+     DT_DATETIME: DATE
+     DT_TIME: DATE
+     DT_INT: LONG
+     DT_TIMESTAMP: DATE
+     DT_NANOTIME: DATE
+     DT_NANOTIMESTAMP: DATE
+     DT_LONG: LONG
+     DT_UUID: STRING
+     DT_SHORT: LONG
+     DT_STRING: STRING
+     DT_SYMBOL: STRING
+     DT_BYTE: BOOLEAN
+	```
 	* 必选：是 <br />
 	* 默认值：无 <br />
 
 * **saveFunctionName**
-    * 描述：自定义数据处理函数。若未指定此配置，插件在接收到reader的数据后，会将数据提交到DolphinDB并通过tableInsert函数写入指定库表；如果定义此参数，则会用指定函数替换tableInsert函数。
+    * 描述：自定义数据处理函数，插件在接收到reader的数据后，会将数据提交到DolphinDB并听过tableInsert函数写入指定库表，如果有定义此参数，则会用本函数替换tableInsert函数。
     * 必选：否 <br />
-	* 默认值： 无。 也可以指定自定义函数 <br />
-
-	插件内置了 savePartitionedData(更新分布式表)/saveDimensionData(更新维度表) 两个函数，当saveFunctionDef未定义或为空时, saveFunctionName可以取枚举值之一，对应用于更新分布式表和维度表的数据处理。
+	* 枚举值： savePartitionedData(更新分布式表)/saveDimensionData(更新维度表) <br />
+	   当saveFunctionDef未定义或为空时, saveFunctionName可以取枚举值之一，对应用于更新分布式表和维度表的数据处理。
 
 * **saveFunctionDef**
-    * 描述：数据入库自定义函数。此函数指 用dolphindb 脚本来实现的数据入库过程。
-            此函数必须接受三个参数：dfsPath(分布式库路径), tbName(数据表名), data(从datax导入的数据,table格式)
+    * 描述：自定义函数体定义。
 	* 必选：当saveFunctionName参数不为空且非两个枚举值之一时，此参数必填 <br />
 	* 默认值：无 <br />
-

@@ -1,0 +1,19 @@
+def rowUpdate(dfsPath, tbName, data, keyFields, t){
+		temp = select * from t
+		ud = select data.* from ej(data,temp, keyFields)
+		ad = select data.* from lj(data,temp, keyFields) [LJFILTER]
+		if(ud.size()<=0&&ad.size()<=0) return;
+		if(ud.size()>0)	[UPDATESQL]
+		if(ad.size()>0) temp.append!(ad)
+		cp = t.schema().chunkPath.substr(strlen(dfsPath.substr(5)))
+		dropPartition(database(dfsPath), cp, tbName)
+		loadTable(dfsPath, tbName).append!(temp)
+}
+def savePartitionedData(dfsPath, tbName, data){
+	[LOGINSCRIPT]
+	t = loadTable(dfsPath, tbName)
+	ds1 = sqlDS(<select * from t>)
+	mr(ds1, rowUpdate{dfsPath, tbName, data, [KEYFIELD]})
+}
+
+

@@ -1,0 +1,66 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel":1
+            }
+        },
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader",
+                    "parameter": {
+                        "username": "root",
+                        "password": "root",
+                        "column": ["*"],
+                        "connection": [
+                            {
+                                "table": [
+                                    "tbl_config"
+                                ],
+                                "jdbcUrl": [
+                                    "jdbc:mysql://localhost:3306/fleet?useUnicode=true&characterEncoding=utf8"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "writer": {
+                    "name": "dolphindbwriter",
+                    "parameter": {
+                        "userId": "admin",
+                        "pwd": "123456",
+                        "host":"localhost",
+                        "port":8848,
+                        "dbPath":"dfs://ddb",
+                        "tableName":"config",
+                        "table":[
+
+                            {
+                                "type":"INT",
+                                "name":"configIdx"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"name"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"value"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"value_type"
+                            },
+                            {
+                                "type":"STRING",
+                                "name":"description"
+                            }
+
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}

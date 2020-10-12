@@ -1,0 +1,70 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel":1
+            }
+        },
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader",
+                    "parameter": {
+                        "username": "root",
+                        "password": "root",
+                        "column": ["*"],
+                        "connection": [
+                            {
+                                "table": [
+                                    "tbl_config"
+                                ],
+                                "jdbcUrl": [
+                                    "jdbc:mysql://118.178.93.164:3306/fleet?useUnicode=true&characterEncoding=utf8"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "writer": {
+                    "name": "dolphindbwriter",
+                    "parameter": {
+                        "userId": "admin",
+                        "pwd": "123456",
+                        "host":"saiying.imwork.net",
+                        "port":148,
+                        "dbPath":"dfs://ddb",
+                        "tableName":"config",
+                        "table":[
+
+                            {
+                                "type":"DT_INT",
+                                "name":"configIdx"
+                            },
+                            {
+                                "type":"DT_STRING",
+                                "name":"name"
+                            },
+                            {
+                                "type":"DT_STRING",
+                                "name":"value"
+                            },
+                            {
+                                "type":"DT_STRING",
+                                "name":"value_type"
+                            },
+                            {
+                                "type":"DT_STRING",
+                                "name":"description"
+                            }
+
+                        ],
+                        "saveFunctionName":"",
+                        "savePartitionDataRange" : "",
+                        "saveFunctionDef":""
+
+                    }
+                }
+            }
+        ]
+    }
+}
