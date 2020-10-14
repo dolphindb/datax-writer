@@ -201,7 +201,7 @@ public class DolphinDbWriter extends Writer {
                     if (column.getRawData() == null)
                         colData.add(new Long2(0,0));
                     else
-                        colData.add(BasicUuid.fromString(column.asString()).getLong2());
+                        colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
                     break;
                 case DT_SHORT:
                     if (column.getRawData() == null)
