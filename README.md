@@ -22,7 +22,7 @@ Download [DataX下载地址](http://datax-opensource.oss-cn-hangzhou.aliyuncs.co
 
 ### 3.2 部署DataX-DolphinDBWriter插件
 
-将 [dolphindbwriter](http://www.dolphindb.com/downloads/dolphindbwriter.zip) 整个目录拷贝到plugin目录下，即可以使用。
+将源码的 ./dist/dolphindbwriter 目录下所有内容拷贝到datax/plugin/writer目录下，即可以使用。
 
 ### 3.3 执行DataX任务
 
@@ -116,7 +116,7 @@ run_type 参数为选项值，当前支持 [test|prod], 具体说明如下：
 
 #### 3.4.3 数据导入预处理
 在数据进入DolphinDB分布式库之前，某些场景需要对数据做一些预处理，比如数据格式转换，参照值转换等。这一功能可以通过自定义`saveFunctionDef`来实现，在数据上传到DolphinDB内存中，若`saveFunctionDef`有定义，插件会用此函数来替换tableInsert函数，将数据处理逻辑插入数据写入之前即可实现上述的功能。
-此函数定义必须有三个参数： dbName, tbName, data，分别对应数据库名(不包含dfs://部分)，数据表名称，待写入的数据。
+此函数定义必须有三个参数： dbPath, tbName, data，分别对应数据库路径(如dfs://db1)，数据表名称，待写入的数据。
 
 
 #### 附录:
