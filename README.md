@@ -22,7 +22,7 @@ Download [DataX下载地址](http://datax-opensource.oss-cn-hangzhou.aliyuncs.co
 
 ### 3.2 部署DataX-DolphinDBWriter插件
 
-将 [dolphindbwriter](http://www.dolphindb.com/downloads/dolphindbwriter.zip) 整个目录拷贝到plugin目录下，即可以使用。
+将源码的 ./dist/dolphindbwriter 目录下所有内容拷贝到datax/plugin/writer目录下，即可以使用。
 
 ### 3.3 执行DataX任务
 
