@@ -241,6 +241,7 @@ public class DolphinDbWriter extends Writer {
                 case DT_MONTH:
                 case DT_DATETIME:
                 case DT_TIME:
+                case DT_SECOND:
                 case DT_INT:
                     vec = new ArrayList<Integer>();
                     break;
@@ -305,6 +306,9 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_TIME:
                     vec = new BasicTimeVector(colData);
+                    break;
+                case DT_SECOND:
+                    vec = new BasicSecondVector(colData);
                     break;
                 case DT_TIMESTAMP:
                     vec = new BasicTimestampVector(colData);
