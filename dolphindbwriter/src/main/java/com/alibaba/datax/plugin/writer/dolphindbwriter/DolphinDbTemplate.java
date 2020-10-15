@@ -1,6 +1,3 @@
-/*
-
- */
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;

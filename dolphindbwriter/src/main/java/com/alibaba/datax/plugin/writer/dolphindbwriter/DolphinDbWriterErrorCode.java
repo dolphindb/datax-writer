@@ -5,7 +5,7 @@ import com.alibaba.datax.common.spi.ErrorCode;
 /**
  * dolphindb error code
  *
- * Created by apple on 2020/2/7.
+ * Created by DolphinDB on 2020/10/15.
  */
 public enum DolphinDbWriterErrorCode implements ErrorCode{
 

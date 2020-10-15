@@ -1,3 +1,9 @@
+/**
+ * Impelement of job and task
+ *
+ * @author DolphinDB
+ * @author Apple
+ */
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
 
 import com.alibaba.datax.common.element.*;
@@ -20,9 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-/**
- * Created by DolphinDB on 2020/10/15.
- */
 public class DolphinDbWriter extends Writer {
 
     public static class Job extends Writer.Job {
@@ -30,7 +33,6 @@ public class DolphinDbWriter extends Writer {
         private static final Logger LOG = LoggerFactory.getLogger(Job.class);
 
         private Configuration writerConfig = null;
-
 
         @Override
         public List<Configuration> split(int mandatoryNumber) {

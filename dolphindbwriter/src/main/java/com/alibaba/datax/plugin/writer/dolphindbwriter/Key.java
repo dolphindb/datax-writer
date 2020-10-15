@@ -3,7 +3,7 @@ package com.alibaba.datax.plugin.writer.dolphindbwriter;
 /**
  * keyword
  *
- * Created by apple on 2020/2/7.
+ * Created by DolphinDB on 2020/10/15.
  */
 public class Key {
 
