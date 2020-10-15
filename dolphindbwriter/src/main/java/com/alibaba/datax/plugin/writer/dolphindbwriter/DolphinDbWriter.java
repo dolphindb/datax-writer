@@ -122,106 +122,117 @@ public class DolphinDbWriter extends Writer {
 
         private void setData(String colName, Column column, Entity.DATA_TYPE targetType) {
             List colData = this.cols.get(colName);
-            switch (targetType) {
-                case DT_DOUBLE:
-                    if (column.getRawData() == null)
-                        colData.add(-Double.MAX_VALUE);
-                    else
-                        colData.add(column.asDouble());
-                    break;
-                case DT_FLOAT:
-                    if (column.getRawData() == null)
-                        colData.add(-Float.MAX_VALUE);
-                    else
-                        colData.add(Float.parseFloat(column.asString()));
-                    break;
-                case DT_BOOL:
-                    if (column.getRawData() == null)
-                        colData.add((byte) -128);
-                    else
-                        colData.add(column.asBoolean() == true ? (byte) 1 : (byte) 0);
-                    break;
-                case DT_DATE:
-                    if (column.getRawData() == null)
-                        colData.add(Integer.MIN_VALUE);
-                    else
-                        colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
-                    break;
-                case DT_MONTH:
-                    if (column.getRawData() == null)
-                        colData.add(Integer.MIN_VALUE);
-                    else {
-                        LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                        colData.add(Utils.countMonths(d.getYear(),d.getMonthValue()));
-                    }
-                    break;
-                case DT_DATETIME:
-                    if (column.getRawData() == null)
-                        colData.add(Integer.MIN_VALUE);
-                    else
-                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
-                    break;
-                case DT_TIME:
-                    if (column.getRawData() == null)
-                        colData.add(Integer.MIN_VALUE);
-                    else
-                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
-                    break;
-                case DT_TIMESTAMP:
-                    if (column.getRawData() == null)
-                        colData.add(Long.MIN_VALUE);
-                    else
-                        colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
-                    break;
-                case DT_NANOTIME:
-                    if (column.getRawData() == null)
-                        colData.add(Long.MIN_VALUE);
-                    else
-                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
-                    break;
-                case DT_NANOTIMESTAMP:
-                    if (column.getRawData() == null)
-                        colData.add(Long.MIN_VALUE);
-                    else
-                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
-                    break;
-                case DT_LONG:
-                    if (column.getRawData() == null)
-                        colData.add(Long.MIN_VALUE);
-                    else
-                        colData.add(column.asLong());
-                    break;
-                case DT_INT:
-                    if (column.getRawData() == null)
-                        colData.add(Integer.MIN_VALUE);
-                    else
-                        colData.add(Integer.parseInt(column.asString()));
-                    break;
-                case DT_UUID:
-                    if (column.getRawData() == null)
-                        colData.add(new Long2(0,0));
-                    else
-                        colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
-                    break;
-                case DT_SHORT:
-                    if (column.getRawData() == null)
-                        colData.add(Short.MIN_VALUE);
-                    else
-                        colData.add(Short.parseShort(column.asString()));
-                    break;
-                case DT_STRING:
-                case DT_SYMBOL:
-                    if (column.getRawData() == null)
-                        colData.add("");
-                    else
-                        colData.add(column.asString());
-                    break;
-                case DT_BYTE:
-                    if (column.getRawData() == null)
-                        colData.add((byte) -128);
-                    else
-                        colData.add(column.asBytes());
-                    break;
+            try {
+                switch (targetType) {
+                    case DT_DOUBLE:
+                        if (column.getRawData() == null)
+                            colData.add(-Double.MAX_VALUE);
+                        else
+                            colData.add(column.asDouble());
+                        break;
+                    case DT_FLOAT:
+                        if (column.getRawData() == null)
+                            colData.add(-Float.MAX_VALUE);
+                        else
+                            colData.add(Float.parseFloat(column.asString()));
+                        break;
+                    case DT_BOOL:
+                        if (column.getRawData() == null)
+                            colData.add((byte) -128);
+                        else
+                            colData.add(column.asBoolean() == true ? (byte) 1 : (byte) 0);
+                        break;
+                    case DT_DATE:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else
+                            colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
+                        break;
+                    case DT_MONTH:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else {
+                            LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                            colData.add(Utils.countMonths(d.getYear(), d.getMonthValue()));
+                        }
+                        break;
+                    case DT_DATETIME:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else
+                            colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        break;
+                    case DT_TIME:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else
+                            colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        break;
+                    case DT_SECOND:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else
+                            colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        break;
+                    case DT_TIMESTAMP:
+                        if (column.getRawData() == null)
+                            colData.add(Long.MIN_VALUE);
+                        else
+                            colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        break;
+                    case DT_NANOTIME:
+                        if (column.getRawData() == null)
+                            colData.add(Long.MIN_VALUE);
+                        else
+                            colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        break;
+                    case DT_NANOTIMESTAMP:
+                        if (column.getRawData() == null)
+                            colData.add(Long.MIN_VALUE);
+                        else
+                            colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        break;
+                    case DT_LONG:
+                        if (column.getRawData() == null)
+                            colData.add(Long.MIN_VALUE);
+                        else
+                            colData.add(column.asLong());
+                        break;
+                    case DT_INT:
+                        if (column.getRawData() == null)
+                            colData.add(Integer.MIN_VALUE);
+                        else
+                            colData.add(Integer.parseInt(column.asString()));
+                        break;
+                    case DT_UUID:
+                        if (column.getRawData() == null)
+                            colData.add(new Long2(0, 0));
+                        else
+                            colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
+                        break;
+                    case DT_SHORT:
+                        if (column.getRawData() == null)
+                            colData.add(Short.MIN_VALUE);
+                        else
+                            colData.add(Short.parseShort(column.asString()));
+                        break;
+                    case DT_STRING:
+                    case DT_SYMBOL:
+                        if (column.getRawData() == null)
+                            colData.add("");
+                        else
+                            colData.add(column.asString());
+                        break;
+                    case DT_BYTE:
+                        if (column.getRawData() == null)
+                            colData.add((byte) -128);
+                        else
+                            colData.add(column.asBytes());
+                        break;
+                }
+            }catch (Exception ex){
+                LOG.info("Parse error : colName=" + colName);
+                throw ex;
             }
         }
 
