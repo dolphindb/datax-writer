@@ -1,7 +1,7 @@
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
 
 /**
- * 配置键值
+ * keyword
  *
  * Created by apple on 2020/2/7.
  */
@@ -19,7 +19,7 @@ public class Key {
 
     public final static String TABLE_NAME = "tableName";
 
-    public final static String DB_NAME = "dbPath";
+    public final static String DB_PATH = "dbPath";
 
     public final static String BATCH_SIZE = "batchSize";
 

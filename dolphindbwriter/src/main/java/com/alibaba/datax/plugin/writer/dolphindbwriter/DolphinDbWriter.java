@@ -21,9 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * Created by apple on 2020/2/6.
- * python /Users/apple/Documents/datax/datax/bin/datax.py /Users/apple/Documents/datax/datax/job/plugin_job_template.json
- * auth by stx
+ * Created by DolphinDB on 2020/10/15.
  */
 public class DolphinDbWriter extends Writer {
 
@@ -375,7 +373,7 @@ public class DolphinDbWriter extends Writer {
             String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
             String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
 
-            String dbName = this.writerConfig.getString(Key.DB_NAME);
+            String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
             this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
             List<Object> tableField = this.writerConfig.getList(Key.TABLE);

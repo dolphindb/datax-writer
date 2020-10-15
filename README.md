@@ -38,9 +38,9 @@ python datax.py /root/datax/myconf/BASECODE.json
 #### 3.4.1 全量导入
 下面以从oracle向DolphinDB导入一张表BASECODE来举个例子.
 
-使用oraclereader从oracle读取BASECODE表读取全量数据，dolphindbwriter将读取的BASECODE数据写入DolphinDB中。
+使用oraclereader从oracle读取BASECODE表读取全量数据，dolphindbwriter将读取的BASECODE数据写入DolphinDB中。注意，DolphinDB的目标数据库和表需要预先创建好。
 
-首先的工作需要编写配置文件BASECODE.json，存放到指定目录，比如 /root/datax/myconf目录下，配置文件说明参考附录。
+首先的工作需要编写配置文件BASECODE.json，存放到指定目录，比如 /root/datax/myconf目录下，配置文件说明参考附录。在做全量导入时，saveFunctionName和saveFunctionDef这两个配置项需要删除，无需配置。
 
 配置完成后，在datax/bin目录下执行如下脚本即可启动同步任务
 ```

@@ -1,5 +1,7 @@
-package com.alibaba.datax.plugin.writer.dolphindbwriter;
+/*
 
+ */
+package com.alibaba.datax.plugin.writer.dolphindbwriter;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
@@ -63,7 +65,6 @@ public class DolphinDbTemplate {
     }
 
     public static String getDimensionTableUpdateScript(String username, String password, JSONArray fieldArr){
-//        String _dimensionTableUpdateScript = readScript("dimensionTableUpdateScript");
         String updateSql = "update temp set ";
         String whereSql = " from  ej(temp, data, %s) ";
         String keyName = "";
@@ -88,7 +89,6 @@ public class DolphinDbTemplate {
     }
 
     public static String getDfsTableUpdateScript(String username, String password,JSONArray fieldArr){
-//        String _dfsTableUpdateScript = readScript("dfsTableUpdateScript.dos");
         String updateSql = "update temp set ";
         String whereSql = " from ej(temp, data, %s) ";
         String keyName = "";
