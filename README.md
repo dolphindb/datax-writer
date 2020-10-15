@@ -323,9 +323,9 @@ BASECODE.json
 	```
 	{"name": "columnName", "type": "DT_STRING", "isKeyField":true}
 	```
-	请注意此处列定义的顺序，需要与原表提取的列顺序完全一致
-	* name ：字段名称
-	* isKeyField：是否唯一键值，可以允许组合唯一键
+	请注意此处列定义的顺序，需要与原表提取的列顺序完全一致。
+	* name ：字段名称。
+	* isKeyField：是否唯一键值，可以允许组合唯一键。本属性主要用于数据更新场景，用于确认更新数据的主键。
 	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
 	
 	DolphinDB类型 | 配置值 | DataX类型
@@ -337,6 +337,7 @@ BASECODE.json
      MONTH|DT_MONTH|DATE
      DATETIME|DT_DATETIME| DATE
      TIME|DT_TIME|DATE
+     SECOND|DT_SECOND|DATE
      TIMESTAMP|DT_TIMESTAMP| DATE
      NANOTIME|DT_NANOTIME| DATE
      NANOTIMETAMP|DT_NANOTIMETAMP| DATE
