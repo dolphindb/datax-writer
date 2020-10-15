@@ -323,6 +323,7 @@ BASECODE.json
 	```
 	{"name": "columnName", "type": "DT_STRING", "isKeyField":true}
 	```
+	请注意此处列定义的顺序，需要与原表提取的列顺序完全一致
 	* name ：字段名称
 	* isKeyField：是否唯一键值，可以允许组合唯一键
 	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
