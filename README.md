@@ -11,10 +11,19 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 #### DataX插件 ：dolphindbwriter
 
 基于DataX的扩展功能，dolphindbwriter插件实现了向DolphinDB写入数据，使用DataX的现有reader插件结合DolphinDBWriter插件，即可满足从不同数据源向DolphinDB同步数据。
+
 DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式，将数据写入分布式数据库。
 
+本插件通常用于一下两个场景：
+
+1-定期从数据源向DolphinDB追加新增数据。
+
+2-定期获取更新的数据，定位DolphinDB中的相同数据并更新。此种模式下，由于需要将历史数据读取出来并在内存中进行匹配，会需要大量的内存，因此这种场景适用于在DolphinDB中容量较小的表，通常建议数据量在200万以下的表。
+当前使用的更新数据的模式是通过全表数据提取、更新后删除分区重写的方式来实现，现在的版本还无法保障上述整体操作的原子性，后续版本会针对此种方式的事务处理方面做优化和改进。
+
+
 ## 3. 使用方法
-详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。
+详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。需要注意的是，dataX的启动脚本是基于python2开发，所以需要使用python2来执行datax.py。
 
 ### 3.1 下载部署DataX
 
@@ -38,9 +47,9 @@ python datax.py /root/datax/myconf/BASECODE.json
 #### 3.4.1 全量导入
 下面以从oracle向DolphinDB导入一张表BASECODE来举个例子.
 
-使用oraclereader从oracle读取BASECODE表读取全量数据，dolphindbwriter将读取的BASECODE数据写入DolphinDB中。
+首先在导入之前，需要在DolphinDB中将目标数据库和表需要预先创建好。然后使用oraclereader从oracle读取BASECODE表读取全量数据，dolphindbwriter将读取到的BASECODE数据写入DolphinDB中。
 
-首先的工作需要编写配置文件BASECODE.json，存放到指定目录，比如 /root/datax/myconf目录下，配置文件说明参考附录。
+编写配置文件BASECODE.json，存放到指定目录，比如 /root/datax/myconf目录下，配置文件说明参考附录。在做全量导入时，saveFunctionName和saveFunctionDef这两项无需配置，删除即可。
 
 配置完成后，在datax/bin目录下执行如下脚本即可启动同步任务
 ```
@@ -323,8 +332,9 @@ BASECODE.json
 	```
 	{"name": "columnName", "type": "DT_STRING", "isKeyField":true}
 	```
-	* name ：字段名称
-	* isKeyField：是否唯一键值，可以允许组合唯一键
+	请注意此处列定义的顺序，需要与原表提取的列顺序完全一致。
+	* name ：字段名称。
+	* isKeyField：是否唯一键值，可以允许组合唯一键。本属性用于数据更新场景，用于确认更新数据的主键，若无更新数据的场景，无需设置。
 	* type 枚举值以及对应DataX数据类型如下。DolphinDB的数据类型及精度，请参考 https://www.dolphindb.cn/cn/help/DataType.html
 	
 	DolphinDB类型 | 配置值 | DataX类型
@@ -336,6 +346,7 @@ BASECODE.json
      MONTH|DT_MONTH|DATE
      DATETIME|DT_DATETIME| DATE
      TIME|DT_TIME|DATE
+     SECOND|DT_SECOND|DATE
      TIMESTAMP|DT_TIMESTAMP| DATE
      NANOTIME|DT_NANOTIME| DATE
      NANOTIMETAMP|DT_NANOTIMETAMP| DATE
