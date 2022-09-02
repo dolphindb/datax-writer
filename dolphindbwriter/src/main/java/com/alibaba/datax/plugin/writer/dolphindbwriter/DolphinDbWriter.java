@@ -69,10 +69,14 @@ public class DolphinDbWriter extends Writer {
     public static class Task extends Writer.Task {
 
         private static final Logger LOG = LoggerFactory.getLogger(Job.class);
-        private HashMap<String, List> cols = null;
         private Configuration writerConfig = null;
         private DBConnection dbConnection = null;
         private String functionSql = "";
+        private String dbName = "";
+        private String tbName = "";
+        private List<String> colNames_ = null;
+        private List<Entity.DATA_TYPE> colTypes_ = null;
+        private List<List> colDatas_ = null;
 
         @Override
         public void startWrite(RecordReceiver lineReceiver) {
@@ -87,10 +91,10 @@ public class DolphinDbWriter extends Writer {
                 batchSize = 10000000;
             }
             while ((record = lineReceiver.getFromReader()) != null) {
-                recordToBasicTable(record, fieldArr);
-                List firstColumn = this.cols.get(fieldArr.getJSONObject(0).getString("name"));
-                if (firstColumn.size() >= batchSize.intValue()) {
-                    insertToDolphinDB(createUploadTable(fieldArr));
+                recordToBasicTable(record);
+                List firstColumn = colDatas_.get(0);
+                if (firstColumn.size() >= batchSize) {
+                    insertToDolphinDB(createUploadTable());
                     initColumn(fieldArr);
                 }
             }
@@ -108,20 +112,18 @@ public class DolphinDbWriter extends Writer {
             }
         }
 
-        private void recordToBasicTable(Record record, JSONArray fieldArr) {
+        private void recordToBasicTable(Record record) {
             int recordLength = record.getColumnNumber();
             Column column;
             for (int i = 0; i < recordLength; i++) {
-                JSONObject field = fieldArr.getJSONObject(i);
-                String colName = field.getString("name");
-                Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
                 column = record.getColumn(i);
-                setData(colName, column, type);
+                setData(i, column);
             }
         }
 
-        private void setData(String colName, Column column, Entity.DATA_TYPE targetType) {
-            List colData = this.cols.get(colName);
+        private void setData(int index, Column column) {
+            List colData = colDatas_.get(index);
+            Entity.DATA_TYPE targetType = colTypes_.get(index);
             try {
                 switch (targetType) {
                     case DT_DOUBLE:
@@ -231,7 +233,7 @@ public class DolphinDbWriter extends Writer {
                         break;
                 }
             }catch (Exception ex){
-                LOG.info("Parse error : colName=" + colName);
+                LOG.info("Parse error : colName=" + colNames_.get(index));
                 throw ex;
             }
         }
@@ -280,18 +282,14 @@ public class DolphinDbWriter extends Writer {
             return vec;
         }
 
-        private BasicTable createUploadTable(JSONArray fieldArr) {
+        private BasicTable createUploadTable() {
             List<Vector> columns = new ArrayList<>();
             List<String> columnNames = new ArrayList<>();
-            for (int i = 0; i < fieldArr.size(); i++) {
-                JSONObject field = fieldArr.getJSONObject(i);
-                String colName = field.getString("name");
-                columnNames.add(colName);
-                Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
-                columns.add(getDDBColFromColumn(this.cols.get(colName), type));
+            for (int i = 0; i < colNames_.size(); i++){
+                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i)));
+                columnNames.add(colNames_.get(i));
             }
-            BasicTable bt = new BasicTable(columnNames, columns);
-            return bt;
+            return new BasicTable(columnNames, columns);
         }
 
         private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType) {
@@ -353,13 +351,36 @@ public class DolphinDbWriter extends Writer {
         }
 
         private void initColumn(JSONArray fieldArr) {
-            this.cols = new HashMap<>();
-            for (int i = 0; i < fieldArr.size(); i++) {
-                JSONObject field = fieldArr.getJSONObject(i);
-                String colName = field.getString("name");
-                Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
-                List colData = getListFromColumn(type);
-                this.cols.put(colName, colData);
+            this.colNames_ = new ArrayList<>();
+            this.colDatas_ = new ArrayList<>();
+            this.colTypes_ = new ArrayList<>();
+            if (fieldArr.toString().equals("[]")){
+                try {
+                    BasicDictionary schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                    BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
+                    BasicStringVector colNames = (BasicStringVector) colDefs.getColumn("name");
+                    BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                    for (int i = 0; i < colDefs.rows(); i++){
+                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
+                        String colName = colNames.getString(i);
+                        List colData = getListFromColumn(type);
+                        this.colNames_.add(colName);
+                        this.colDatas_.add(colData);
+                        this.colTypes_.add(type);
+                    }
+                }catch (Exception e){
+                    LOG.error(e.getMessage(),e);
+                }
+            }else {
+                for (int i = 0; i < fieldArr.size(); i++) {
+                    JSONObject field = fieldArr.getJSONObject(i);
+                    String colName = field.getString("name");
+                    Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
+                    List colData = getListFromColumn(type);
+                    this.colNames_.add(colName);
+                    this.colDatas_.add(colData);
+                    this.colTypes_.add(type);
+                }
             }
         }
 
@@ -377,10 +398,11 @@ public class DolphinDbWriter extends Writer {
 
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
+            this.dbName = dbName;
+            this.tbName = tbName;
             this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
             List<Object> tableField = this.writerConfig.getList(Key.TABLE);
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
-            initColumn(fieldArr);
             if (saveFunctionName != null && !saveFunctionName.equals("")) {
                 if (saveFunctionDef == null || saveFunctionDef.equals("")) {
                     switch (saveFunctionName) {
@@ -406,14 +428,13 @@ public class DolphinDbWriter extends Writer {
                 LOG.error(e.getMessage(),e);
                 LOG.info(saveFunctionDef);
             }
+            initColumn(fieldArr);
         }
 
         @Override
         public void post() {
             LOG.info("post is invoked");
-            List<Object> tableField = this.writerConfig.getList(Key.TABLE);
-            JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
-            insertToDolphinDB(createUploadTable(fieldArr));
+            insertToDolphinDB(createUploadTable());
         }
 
         @Override
