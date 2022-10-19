@@ -356,7 +356,12 @@ public class DolphinDbWriter extends Writer {
             this.colTypes_ = new ArrayList<>();
             if (fieldArr.toString().equals("[]")){
                 try {
-                    BasicDictionary schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                    BasicDictionary schema;
+                    if (this.dbName == null || dbName.equals("")){
+                        schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                    }else {
+                        schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                    }
                     BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
                     BasicStringVector colNames = (BasicStringVector) colDefs.getColumn("name");
                     BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
@@ -395,26 +400,29 @@ public class DolphinDbWriter extends Writer {
 
             String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
             String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
-
+            List<Object> tableField = this.writerConfig.getList(Key.TABLE);
+            JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
             this.dbName = dbName;
             this.tbName = tbName;
-            this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
-            List<Object> tableField = this.writerConfig.getList(Key.TABLE);
-            JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
-            if (saveFunctionName != null && !saveFunctionName.equals("")) {
-                if (saveFunctionDef == null || saveFunctionDef.equals("")) {
-                    switch (saveFunctionName) {
-                        case "savePartitionedData":
-                            saveFunctionDef = DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
-                            break;
-                        case "saveDimensionData":
-                            saveFunctionDef = DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
-                            break;
+            if(this.dbName == null || this.dbName.equals("")){
+                this.functionSql = String.format("tableInsert{%s}", tbName);
+            }else {
+                this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
+                if (saveFunctionName != null && !saveFunctionName.equals("")) {
+                    if (saveFunctionDef == null || saveFunctionDef.equals("")) {
+                        switch (saveFunctionName) {
+                            case "savePartitionedData":
+                                saveFunctionDef = DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
+                                break;
+                            case "saveDimensionData":
+                                saveFunctionDef = DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
+                                break;
+                        }
                     }
+                    this.functionSql = String.format("%s{'%s','%s'}", saveFunctionName, dbName, tbName);
                 }
-                this.functionSql = String.format("%s{'%s','%s'}", saveFunctionName, dbName, tbName);
             }
             dbConnection = new DBConnection();
             try {
