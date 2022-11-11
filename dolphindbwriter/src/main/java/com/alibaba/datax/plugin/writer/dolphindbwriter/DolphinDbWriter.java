@@ -106,6 +106,7 @@ public class DolphinDbWriter extends Writer {
             args.add(bt);
             try {
                 dbConnection.run(this.functionSql, args);
+                LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    " + args.get(0).getString());
                 LOG.info("end write BasicTable");
             } catch (IOException ex) {
                 LOG.error(ex.getMessage());
@@ -411,6 +412,12 @@ public class DolphinDbWriter extends Writer {
             }else {
                 this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
                 if (saveFunctionName != null && !saveFunctionName.equals("")) {
+                    if (saveFunctionName.equals("upsertTable")){
+                        if (saveFunctionDef.contains("keyColNames")){
+                            String upsertParameter = saveFunctionDef;
+                            saveFunctionDef = DolphinDbTemplate.getTableUpsertScript(userid, pwd, upsertParameter);
+                        }
+                    }
                     if (saveFunctionDef == null || saveFunctionDef.equals("")) {
                         switch (saveFunctionName) {
                             case "savePartitionedData":
