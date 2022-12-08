@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class DolphinDbWriter extends Writer {
@@ -106,10 +105,8 @@ public class DolphinDbWriter extends Writer {
             args.add(bt);
             try {
                 dbConnection.run(this.functionSql, args);
-                LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    " + args.get(0).getString());
-                LOG.info("end write BasicTable");
             } catch (IOException ex) {
-                LOG.error(ex.getMessage());
+                LOG.error(ex.getMessage(), ex);
             }
         }
 
@@ -456,6 +453,7 @@ public class DolphinDbWriter extends Writer {
         public void destroy() {
 
             if (dbConnection != null) {
+                LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Close DBConnection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 dbConnection.close();
             }
         }
