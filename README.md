@@ -27,7 +27,7 @@ DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式�
 
 ### 3.1 下载部署DataX
 
-Download [DataX下载地址](http://datax-opensource.oss-cn-hangzhou.aliyuncs.com/datax.tar.gz)
+Download [DataX下载地址](https://datax-opensource.oss-cn-hangzhou.aliyuncs.com/202210/datax.tar.gz)
 
 ### 3.2 部署DataX-DolphinDBWriter插件
 
