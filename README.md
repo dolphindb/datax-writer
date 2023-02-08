@@ -14,7 +14,7 @@ DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从
 
 DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式，将数据写入分布式数据库。
 
-本插件通常用于一下两个场景：
+本插件通常用于以下两个场景：
 
 1-定期从数据源向DolphinDB追加新增数据。
 
@@ -167,6 +167,8 @@ run_type 参数为选项值，当前支持 [test|prod], 具体说明如下：
             dt.append!(temp)}
     ```
 * 配置文件示例
+
+ 目前(补充版本信息)dolphindbwriter已支持根据table名称获取schema。
 
 BASECODE.json
 ```json
@@ -359,6 +361,7 @@ BASECODE.json
 	
 	* 必选：是 <br />
 	* 默认值：无 <br />
+  
 
 * **saveFunctionName**
     * 描述：自定义数据处理函数。若未指定此配置，插件在接收到reader的数据后，会将数据提交到DolphinDB并通过tableInsert函数写入指定库表；如果定义此参数，则会用指定函数替换tableInsert函数。
