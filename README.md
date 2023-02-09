@@ -1,9 +1,9 @@
 # 基于DataX的DolphinDB数据导入工具
 ## 1. 使用场景
-DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少, 并且数据分散在不同的数据库系统中。
+DataX-dolphindbwriter插件是解决用户将不同数据来源的数据同步到DolphinDB的场景而开发的，这些数据的特征是改动很少，并且数据分散在不同的数据库系统中。
 
 ## 2. DataX离线数据同步
-DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能, [DataX已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
+DataX 是阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能，[DataX已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
 
 DataX是可扩展的数据同步框架，将不同数据源的同步抽象为从源头数据源读取数据的Reader插件，以及向目标端写入数据的Writer插件。理论上DataX框架可以支持任意数据源类型的数据同步工作。每接入一套新数据源该新加入的数据源即可实现和现有的数据源互通。
 
@@ -19,11 +19,12 @@ DolphinDBWriter底层依赖于 DolphinDB Java API，采用批量写入的方式�
 1-定期从数据源向DolphinDB追加新增数据。
 
 2-定期获取更新的数据，定位DolphinDB中的相同数据并更新。此种模式下，由于需要将历史数据读取出来并在内存中进行匹配，会需要大量的内存，因此这种场景适用于在DolphinDB中容量较小的表，通常建议数据量在200万以下的表。
+
 当前使用的更新数据的模式是通过全表数据提取、更新后删除分区重写的方式来实现，现在的版本还无法保障上述整体操作的原子性，后续版本会针对此种方式的事务处理方面做优化和改进。
 
 
 ## 3. 使用方法
-详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md), 以下仅列出必要步骤。需要注意的是，dataX的启动脚本是基于python2开发，所以需要使用python2来执行datax.py。
+详细信息请参阅 [DataX指南](https://github.com/alibaba/DataX/blob/master/userGuid.md)，以下仅列出必要步骤。需要注意的是，dataX的启动脚本是基于python2开发，所以需要使用python2来执行datax.py。
 
 ### 3.1 下载部署DataX
 
@@ -61,7 +62,7 @@ python datax.py /root/datax/myconf/BASECODE.json
 
 * 新增数据增量同步
 
-    新增数据的增量同步，与全量导入相比，唯一的不同点在于reader中对数据源的对已导入数据过滤。通常需要处理增量数据的表，都会有一个时间戳的列来标记入库时间，在oralce reader插件中，只需要配置where条件，增加时间戳过滤即可,对于dolphindbwriter的配置与全量导入完全相同。比如时间戳字段为OPDATE, 要增量导入2020.03.01之后的增量数据，那么配置
+    新增数据的增量同步，与全量导入相比，唯一的不同点在于reader中对数据源的对已导入数据过滤。通常需要处理增量数据的表，都会有一个时间戳的列来标记入库时间，在oralce reader插件中，只需要配置where条件，增加时间戳过滤即可，对于dolphindbwriter的配置与全量导入完全相同。比如时间戳字段为OPDATE， 要增量导入2020.03.01之后的增量数据，那么配置
  `"where": "OPDATE > to_date('2020-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')`
  
  * 变更数据增量同步
@@ -74,8 +75,8 @@ python datax.py /root/datax/myconf/BASECODE.json
 
     * saveFunctionName
     
-        DolphinDB有多种数据落盘的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。
-
+        DolphinDB有多种数据存储的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。
+在（补充版本信息）中，用户可通过`saveFunctionName`和`saveFunctionDef`引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能以保证导入后的数据唯一性。具体配置示例参考附录。
     
     当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
 
@@ -108,13 +109,13 @@ python datax.py /root/datax/myconf/BASECODE.json
 定时同步是通过python脚本实现，它在datax的发布包中包含。
 增量同步脚本在根目录ddb_script下，下载后保存在本地磁盘比如/root/ddb_script/。
 
-假设datax根目录为/root/datax, 配置文件放在/root/datax/myconf/目录下，则增量同步的使用方法为
+假设datax根目录为/root/datax， 配置文件放在/root/datax/myconf/目录下，则增量同步的使用方法为
 ```
 cd /root/ddb_script/
 python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_type]
 ```
 
-run_type 参数为选项值，当前支持 [test|prod], 具体说明如下：
+run_type 参数为选项值，当前支持 [test|prod]，具体说明如下：
 ```
 设置为test时，脚本实时打印 datax 输出的内容，
 此设置下不会向op_table.json文件更新时间戳，可供重复调试配置文件使用。
@@ -168,7 +169,7 @@ run_type 参数为选项值，当前支持 [test|prod], 具体说明如下：
     ```
 * 配置文件示例
 
- 目前(补充版本信息)dolphindbwriter已支持根据table名称获取schema。
+ 目前(补充版本信息)dolphindbwriter已支持根据table名称获取schema。以下仍展示完整代码：
 
 BASECODE.json
 ```json
@@ -372,7 +373,12 @@ BASECODE.json
 
 * **saveFunctionDef**
     * 描述：数据入库自定义函数。此函数指 用dolphindb 脚本来实现的数据入库过程。
-            此函数必须接受三个参数：dfsPath(分布式库路径), tbName(数据表名), data(从datax导入的数据,table格式)
+            此函数必须接受三个参数：dfsPath(分布式库路径)，tbName(数据表名)，data(从datax导入的数据，table格式)
 	* 必选：当saveFunctionName参数不为空且非两个枚举值之一时，此参数必填 <br />
 	* 默认值：无 <br />
-
+* 引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能
+  修改配置文件 BASECODE.json 中的`writer`部分。
+    ``` 
+    "saveFunctionName":"upsertTable",
+    "saveFunctionDef":"ignoreNull=true;keyColNames=`id;sortColumns=`value"
+    ```
