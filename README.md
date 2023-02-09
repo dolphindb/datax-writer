@@ -75,8 +75,8 @@ python datax.py /root/datax/myconf/BASECODE.json
 
     * saveFunctionName
     
-        DolphinDB有多种数据存储的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。
-在（补充版本信息）中，用户可通过`saveFunctionName`和`saveFunctionDef`引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能以保证导入后的数据唯一性。具体配置示例参考附录。
+        DolphinDB有多种数据存储的方式，比较常用的两种是分布式表和维度表。dolphindbwriter中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在writer配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer会根据这两个配置项，采用对应的方式将数据更新到DolphinDB中。  
+        在（补充版本信息）中，用户可通过`saveFunctionName`和`saveFunctionDef`引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能以保证导入后的数据唯一性。具体配置示例参考附录。
     
     当有些数据源中不包含OPTYPE这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，函数视图输出的方式：
 
@@ -376,8 +376,8 @@ BASECODE.json
             此函数必须接受三个参数：dfsPath(分布式库路径)，tbName(数据表名)，data(从datax导入的数据，table格式)
 	* 必选：当saveFunctionName参数不为空且非两个枚举值之一时，此参数必填 <br />
 	* 默认值：无 <br />
-* 引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能
-  修改配置文件 BASECODE.json 中的`writer`部分。
+* 引入DolphinDB的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能  
+    修改配置文件 BASECODE.json 中的`writer`部分。
     ``` 
     "saveFunctionName":"upsertTable",
     "saveFunctionDef":"ignoreNull=true;keyColNames=`id;sortColumns=`value"
