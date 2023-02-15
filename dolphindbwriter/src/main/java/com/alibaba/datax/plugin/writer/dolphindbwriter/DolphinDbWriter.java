@@ -218,6 +218,7 @@ public class DolphinDbWriter extends Writer {
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
+                    case DT_BLOB:
                         if (column.getRawData() == null)
                             colData.add("");
                         else
@@ -270,6 +271,7 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_STRING:
                 case DT_SYMBOL:
+                case DT_BLOB:
                     vec = new ArrayList<String>();
                     break;
                 case DT_BYTE:
@@ -341,6 +343,9 @@ public class DolphinDbWriter extends Writer {
                 case DT_STRING:
                 case DT_SYMBOL:
                     vec = new BasicStringVector(colData);
+                    break;
+                case DT_BLOB:
+                    vec = new BasicStringVector(colData, true);
                     break;
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
