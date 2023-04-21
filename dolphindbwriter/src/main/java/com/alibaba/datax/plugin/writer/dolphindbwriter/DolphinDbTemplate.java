@@ -1,5 +1,4 @@
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
-
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
@@ -37,6 +36,18 @@ public class DolphinDbTemplate {
             "\tmr(ds1, rowUpdate{dfsPath, tbName, data, [KEYFIELD]})\n" +
             "}\n";
 
+    private static final String _tableUpsertScript = "def upsertTable(dfsPath, tbName, mutable data){\n" +
+            "\t[LOGINSCRIPT]\n"+
+            "\ttable = NULL;\n" +
+            "\tif(dfsPath==\"\" || dfsPath == NULL){\n" +
+            "\t\ttable = tbName;\t\n" +
+            "\t}else{\n" +
+            "\t\ttable = loadTable(dfsPath, tbName);\n" +
+            "\t}\n" +
+            "\tdata.reorderColumns!(table.schema().colDefs[`name])\n" +
+            "\ttable.upsert!(data,[UPSERTPARAMETER])\n" +
+            "}\n";
+
     public static String readScript(String fileName) {
         InputStream is = DolphinDbTemplate.class.getClassLoader().getResourceAsStream(fileName);
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
@@ -63,7 +74,6 @@ public class DolphinDbTemplate {
     }
 
     public static String getDimensionTableUpdateScript(String username, String password, JSONArray fieldArr){
-//        String _dimensionTableUpdateScript = readScript("dimensionTableUpdateScript");
         String updateSql = "update temp set ";
         String whereSql = " from  ej(temp, data, %s) ";
         String keyName = "";
@@ -88,7 +98,6 @@ public class DolphinDbTemplate {
     }
 
     public static String getDfsTableUpdateScript(String username, String password,JSONArray fieldArr){
-//        String _dfsTableUpdateScript = readScript("dfsTableUpdateScript.dos");
         String updateSql = "update temp set ";
         String whereSql = " from ej(temp, data, %s) ";
         String keyName = "";
@@ -110,5 +119,13 @@ public class DolphinDbTemplate {
         updateSql = updateSql.substring(0,updateSql.length()-2);
         updateSql = updateSql + whereSql;
         return _dfsTableUpdateScript.replace("[UPDATESQL]",updateSql).replace("[KEYFIELD]", keyName).replace("[LJFILTER]", whereLjSql).replace("[LOGINSCRIPT]",loginScript);
+    }
+
+    public static String getTableUpsertScript(String userName, String passWord, String upsertParameter){
+        String loginScript = String.format("login('%s','%s')", userName, passWord);
+        if (upsertParameter.contains("keyColNames")){
+            upsertParameter = upsertParameter.replace(';', ',');
+        }
+        return  _tableUpsertScript.replace("[LOGINSCRIPT]", loginScript).replace("[UPSERTPARAMETER]", upsertParameter);
     }
 }

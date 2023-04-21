@@ -3,13 +3,13 @@ package com.alibaba.datax.plugin.writer.dolphindbwriter;
 import com.alibaba.datax.common.spi.ErrorCode;
 
 /**
- * dolphindb业务错误码
+ * dolphindb error code
  *
- * Created by apple on 2020/2/7.
+ * Created by DolphinDB on 2020/10/15.
  */
 public enum DolphinDbWriterErrorCode implements ErrorCode{
 
-    REQUIRED_VALUE("DolphinDbWriter-00", "您缺失了必须填写的参数值.")
+    REQUIRED_VALUE("DolphinDbWriter-00", "required parameters missing")
     ;
 
     private final String code;
