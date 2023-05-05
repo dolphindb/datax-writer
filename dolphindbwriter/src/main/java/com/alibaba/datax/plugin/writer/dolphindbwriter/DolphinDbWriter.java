@@ -16,9 +16,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.xxdb.DBConnection;
 import com.xxdb.data.*;
 import com.xxdb.io.Long2;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -69,10 +69,12 @@ public class DolphinDbWriter extends Writer {
 
     public static class Task extends Writer.Task {
 
-        private static final Logger LOG = LoggerFactory.getLogger(Job.class);
+        private static final Logger LOG = LoggerFactory.getLogger(Task.class);
         private Configuration writerConfig = null;
         private DBConnection dbConnection = null;
         private String functionSql = "";
+        private String preSql = "";
+        private String postSql = "";
         private String dbName = "";
         private String tbName = "";
         private List<String> colNames_ = null;
@@ -95,7 +97,16 @@ public class DolphinDbWriter extends Writer {
                 recordToBasicTable(record);
                 List firstColumn = colDatas_.get(0);
                 if (firstColumn.size() >= batchSize) {
+                    if (!this.preSql.isEmpty()) {
+                        executePreSql(this.preSql);
+                    }
+
                     insertToDolphinDB(createUploadTable());
+
+                    if (!this.postSql.isEmpty()) {
+                        executePostSql(this.postSql);
+                    }
+
                     initColumn(fieldArr);
                 }
             }
@@ -109,6 +120,25 @@ public class DolphinDbWriter extends Writer {
                 dbConnection.run(this.functionSql, args);
             } catch (IOException ex) {
                 LOG.error(ex.getMessage(), ex);
+                throw new RuntimeException(ex.getMessage(), ex);
+            }
+        }
+
+        private void executePreSql(String preSql) {
+            LOG.info("execute preSql: " + this.preSql + " before insertToDolphinDB.");
+            try {
+                dbConnection.run(this.preSql);
+            } catch (IOException e) {
+                LOG.error(e.getMessage(), e);
+            }
+        }
+
+        private void executePostSql(String postSql) {
+            LOG.info("execute postSql: " + this.postSql + " after insertToDolphinDB.");
+            try {
+                dbConnection.run(this.postSql);
+            } catch (IOException e) {
+                LOG.error(e.getMessage(), e);
             }
         }
 
@@ -359,6 +389,7 @@ public class DolphinDbWriter extends Writer {
             this.colNames_ = new ArrayList<>();
             this.colDatas_ = new ArrayList<>();
             this.colTypes_ = new ArrayList<>();
+
             if (fieldArr.toString().equals("[]")){
                 try {
                     BasicDictionary schema;
@@ -378,18 +409,40 @@ public class DolphinDbWriter extends Writer {
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
                     }
-                }catch (Exception e){
-                    LOG.error(e.getMessage(),e);
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
                 }
-            }else {
+            } else {
                 for (int i = 0; i < fieldArr.size(); i++) {
                     JSONObject field = fieldArr.getJSONObject(i);
                     String colName = field.getString("name");
-                    Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
-                    List colData = getListFromColumn(type);
+                    if (StringUtils.isEmpty(field.getString("type"))) {
+                        try {
+                            BasicDictionary schema;
+                            if (this.dbName == null || dbName.equals("")) {
+                                schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                            } else {
+                                schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                            }
+                            BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
+                            BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                            for (int j = 0; j < colDefs.rows(); j++){
+                                Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(j));
+                                List colData = getListFromColumn(type);
+                                this.colDatas_.add(colData);
+                                this.colTypes_.add(type);
+                            }
+                        } catch (Exception e){
+                            LOG.error(e.getMessage(), e);
+                        }
+                    } else {
+                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
+                        List colData = getListFromColumn(type);
+                        this.colDatas_.add(colData);
+                        this.colTypes_.add(type);
+                    }
+
                     this.colNames_.add(colName);
-                    this.colDatas_.add(colData);
-                    this.colTypes_.add(type);
                 }
             }
         }
@@ -409,6 +462,10 @@ public class DolphinDbWriter extends Writer {
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
+            String preSql = this.writerConfig.getString(Key.PRE_SQL);
+            String postSql = this.writerConfig.getString(Key.POST_SQL);
+            this.preSql = preSql;
+            this.postSql = postSql;
             this.dbName = dbName;
             this.tbName = tbName;
             if(this.dbName == null || this.dbName.equals("")){
@@ -443,11 +500,13 @@ public class DolphinDbWriter extends Writer {
                     LOG.info(saveFunctionDef);
                     dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
                 }
+
+                initColumn(fieldArr);
             } catch (IOException e) {
                 LOG.error(e.getMessage(),e);
                 LOG.info(saveFunctionDef);
+                throw new RuntimeException(e.getMessage(), e);
             }
-            initColumn(fieldArr);
         }
 
         @Override

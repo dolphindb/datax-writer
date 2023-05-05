@@ -9,7 +9,7 @@ public class Key {
 
     public final static String USER_ID = "userId";
 
-    public final static String PWD = "pwd";
+    public final static String PWD = "password";
 
     public final static String PORT = "port";
 
@@ -26,4 +26,8 @@ public class Key {
     public final static String SAVE_FUNCTION_DEF = "saveFunctionDef";
 
     public final static String SAVE_FUNCTION_NAME = "saveFunctionName";
+
+    public static final String PRE_SQL = "preSql";
+
+    public static final String POST_SQL = "postSql";
 }
