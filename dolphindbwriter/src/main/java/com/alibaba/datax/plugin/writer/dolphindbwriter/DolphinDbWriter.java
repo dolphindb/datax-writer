@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -271,8 +272,8 @@ public class DolphinDbWriter extends Writer {
             }
         }
 
-        private List getListFromColumn(Entity.DATA_TYPE targetType) {
-            List vec = null;
+        private List<?> getListFromColumn(Entity.DATA_TYPE targetType) {
+            List<?> vec = null;
             switch (targetType) {
                 case DT_DOUBLE:
                     vec = new ArrayList<Double>();
@@ -310,6 +311,12 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_BYTE:
                     vec = new ArrayList<Byte>();
+                    break;
+                case DT_DECIMAL:
+                case DT_DECIMAL32:
+                case DT_DECIMAL64:
+                case DT_DECIMAL128:
+                    vec = new ArrayList<BigDecimal>();
                     break;
             }
             if (vec == null) LOG.info(targetType.toString() + " get Vec is NULL!!!!!");
