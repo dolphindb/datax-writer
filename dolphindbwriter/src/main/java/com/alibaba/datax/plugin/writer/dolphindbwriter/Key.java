@@ -9,7 +9,11 @@ public class Key {
 
     public final static String USER_ID = "userId";
 
-    public final static String PWD = "password";
+    public final static String USERNAME = "username";
+
+    public final static String PWD = "pwd";
+
+    public final static String PASSWORD = "password";
 
     public final static String PORT = "port";
 

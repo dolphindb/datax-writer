@@ -7,6 +7,7 @@
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
 
 import com.alibaba.datax.common.element.*;
+import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.spi.Writer;
 import com.alibaba.datax.common.util.Configuration;
@@ -56,14 +57,15 @@ public class DolphinDbWriter extends Writer {
 
         }
 
-        /**
-         *
-         */
         private void validateParameter() {
             this.writerConfig.getNecessaryValue(Key.HOST, DolphinDbWriterErrorCode.REQUIRED_VALUE);
             this.writerConfig.getNecessaryValue(Key.PORT, DolphinDbWriterErrorCode.REQUIRED_VALUE);
-            this.writerConfig.getNecessaryValue(Key.PWD, DolphinDbWriterErrorCode.REQUIRED_VALUE);
-            this.writerConfig.getNecessaryValue(Key.USER_ID, DolphinDbWriterErrorCode.REQUIRED_VALUE);
+            if (StringUtils.isEmpty(this.writerConfig.getString(Key.PASSWORD)) && StringUtils.isEmpty(this.writerConfig.getString(Key.PWD))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "您提供配置文件有误，password 或 pwd 必填其一，不允许为空或者留白；优先推荐填写password.");
+            }
+            if (StringUtils.isEmpty(this.writerConfig.getString(Key.USER_ID)) && StringUtils.isEmpty(this.writerConfig.getString(Key.USERNAME))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "您提供配置文件有误，userId 或 username 必填其一，不允许为空或者留白；优先推荐填写username.");
+            }
         }
     }
 
@@ -453,8 +455,18 @@ public class DolphinDbWriter extends Writer {
             this.writerConfig = super.getPluginJobConf();
             String host = this.writerConfig.getString(Key.HOST);
             int port = this.writerConfig.getInt(Key.PORT);
-            String userid = this.writerConfig.getString(Key.USER_ID);
-            String pwd = this.writerConfig.getString(Key.PWD);
+            String userid = new String();
+            String configUserId = this.writerConfig.getString(Key.USER_ID);
+            String configUsername = this.writerConfig.getString(Key.USERNAME);
+            if (StringUtils.isNotEmpty(configUsername) || StringUtils.isNotEmpty(configUserId)) {
+                userid = StringUtils.isNotEmpty(configUsername) ? configUsername : configUserId;
+            }
+            String pwd = new String();
+            String configPwd = this.writerConfig.getString(Key.PWD);
+            String configPassword = this.writerConfig.getString(Key.PASSWORD);
+            if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd)) {
+                pwd = StringUtils.isNotEmpty(configPassword) ? configPassword : configPwd;
+            }
 
             String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
             String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
