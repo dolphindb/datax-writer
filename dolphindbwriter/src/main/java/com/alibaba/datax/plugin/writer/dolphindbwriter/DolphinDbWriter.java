@@ -522,7 +522,6 @@ public class DolphinDbWriter extends Writer {
 
                 initColumn(fieldArr);
             } catch (IOException e) {
-                LOG.error(e.getMessage(),e);
                 LOG.info(saveFunctionDef);
                 throw new RuntimeException(e.getMessage(), e);
             }
