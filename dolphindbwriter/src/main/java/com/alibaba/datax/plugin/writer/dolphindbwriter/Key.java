@@ -34,4 +34,6 @@ public class Key {
     public static final String PRE_SQL = "preSql";
 
     public static final String POST_SQL = "postSql";
+
+    public static final String COLUMN = "column";
 }

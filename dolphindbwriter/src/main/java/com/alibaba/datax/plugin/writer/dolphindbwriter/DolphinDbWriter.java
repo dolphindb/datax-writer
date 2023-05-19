@@ -17,6 +17,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.xxdb.DBConnection;
 import com.xxdb.data.*;
 import com.xxdb.io.Long2;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,25 +93,29 @@ public class DolphinDbWriter extends Writer {
             List<Object> tableField = this.writerConfig.getList(Key.TABLE);
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
 
+            List<Object> columList = this.writerConfig.getList(Key.COLUMN);
+            JSONArray columnArr = JSONArray.parseArray(JSON.toJSONString(columList));
+
             Integer batchSize = this.writerConfig.getInt(Key.BATCH_SIZE);
             if(batchSize==null){
                 batchSize = 10000000;
             }
+
+            if (!this.preSql.isEmpty()) {
+                executePreSql(this.preSql);
+            }
+
             while ((record = lineReceiver.getFromReader()) != null) {
                 recordToBasicTable(record);
                 List firstColumn = colDatas_.get(0);
                 if (firstColumn.size() >= batchSize) {
-                    if (!this.preSql.isEmpty()) {
-                        executePreSql(this.preSql);
-                    }
-
                     insertToDolphinDB(createUploadTable());
 
-                    if (!this.postSql.isEmpty()) {
-                        executePostSql(this.postSql);
+                    if (!columnArr.isEmpty()) {
+                        initColumn(columnArr);
+                    } else if (!fieldArr.isEmpty()) {
+                        initTable(fieldArr);
                     }
-
-                    initColumn(fieldArr);
                 }
             }
         }
@@ -394,6 +399,45 @@ public class DolphinDbWriter extends Writer {
             return vec;
         }
 
+        private void initTable(JSONArray fieldArr) {
+            this.colNames_ = new ArrayList<>();
+            this.colDatas_ = new ArrayList<>();
+            this.colTypes_ = new ArrayList<>();
+            if (fieldArr.toString().equals("[]")){
+                try {
+                    BasicDictionary schema;
+                    if (this.dbName == null || dbName.equals("")){
+                        schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                    }else {
+                        schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                    }
+                    BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
+                    BasicStringVector colNames = (BasicStringVector) colDefs.getColumn("name");
+                    BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                    for (int i = 0; i < colDefs.rows(); i++){
+                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
+                        String colName = colNames.getString(i);
+                        List colData = getListFromColumn(type);
+                        this.colNames_.add(colName);
+                        this.colDatas_.add(colData);
+                        this.colTypes_.add(type);
+                    }
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            } else {
+                for (int i = 0; i < fieldArr.size(); i++) {
+                    JSONObject field = fieldArr.getJSONObject(i);
+                    String colName = field.getString("name");
+                    Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
+                    List colData = getListFromColumn(type);
+                    this.colNames_.add(colName);
+                    this.colDatas_.add(colData);
+                    this.colTypes_.add(type);
+                }
+            }
+        }
+
         private void initColumn(JSONArray fieldArr) {
             this.colNames_ = new ArrayList<>();
             this.colDatas_ = new ArrayList<>();
@@ -423,34 +467,26 @@ public class DolphinDbWriter extends Writer {
                 }
             } else {
                 for (int i = 0; i < fieldArr.size(); i++) {
-                    JSONObject field = fieldArr.getJSONObject(i);
-                    String colName = field.getString("name");
-                    if (StringUtils.isEmpty(field.getString("type"))) {
-                        try {
-                            BasicDictionary schema;
-                            if (this.dbName == null || dbName.equals("")) {
-                                schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
-                            } else {
-                                schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
-                            }
-                            BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
-                            BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
-                            for (int j = 0; j < colDefs.rows(); j++){
-                                Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(j));
-                                List colData = getListFromColumn(type);
-                                this.colDatas_.add(colData);
-                                this.colTypes_.add(type);
-                            }
-                        } catch (Exception e){
-                            LOG.error(e.getMessage(), e);
+                    Object field = fieldArr.get(i);
+                    String colName = field.toString();
+                    try {
+                        BasicDictionary schema;
+                        if (this.dbName == null || dbName.equals("")) {
+                            schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                        } else {
+                            schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
                         }
-                    } else {
-                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
-                        List colData = getListFromColumn(type);
-                        this.colDatas_.add(colData);
-                        this.colTypes_.add(type);
+                        BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
+                        BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                        for (int j = 0; j < colDefs.rows(); j++){
+                            Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(j));
+                            List colData = getListFromColumn(type);
+                            this.colDatas_.add(colData);
+                            this.colTypes_.add(type);
+                        }
+                    } catch (Exception e){
+                        LOG.error(e.getMessage(), e);
                     }
-
                     this.colNames_.add(colName);
                 }
             }
@@ -481,10 +517,35 @@ public class DolphinDbWriter extends Writer {
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
-            String preSql = this.writerConfig.getString(Key.PRE_SQL);
-            String postSql = this.writerConfig.getString(Key.POST_SQL);
-            this.preSql = preSql;
-            this.postSql = postSql;
+
+            // preSql:
+            List<Object> preSqlList = this.writerConfig.getList(Key.PRE_SQL);
+            if (CollectionUtils.isNotEmpty(preSqlList)) {
+                JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
+                List<String> joinPreSqlList = new ArrayList<>();
+                for (int i = 0; i < preSqlArr.size(); i++) {
+                    Object field = preSqlArr.get(i);
+                    joinPreSqlList.add(field.toString());
+                }
+                this.preSql = StringUtils.join(joinPreSqlList, ";");
+            }
+
+            // postSql:
+            List<Object> postSqlList = this.writerConfig.getList(Key.POST_SQL);
+            if (CollectionUtils.isNotEmpty(postSqlList)) {
+                JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
+                List<String> joinPostSqlList = new ArrayList<>();
+                for (int i = 0; i < postSqlArr.size(); i++) {
+                    Object field = postSqlArr.get(i);
+                    joinPostSqlList.add(field.toString());
+                }
+                this.postSql = StringUtils.join(joinPostSqlList, ";");
+            }
+
+            // column:
+            List<Object> columList = this.writerConfig.getList(Key.COLUMN);
+            JSONArray columnArr = JSONArray.parseArray(JSON.toJSONString(columList));
+
             this.dbName = dbName;
             this.tbName = tbName;
             if(this.dbName == null || this.dbName.equals("")){
@@ -520,7 +581,11 @@ public class DolphinDbWriter extends Writer {
                     dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
                 }
 
-                initColumn(fieldArr);
+                if (!columnArr.isEmpty()) {
+                    initColumn(columnArr);
+                } else if (!fieldArr.isEmpty()) {
+                    initTable(fieldArr);
+                }
             } catch (IOException e) {
                 LOG.info(saveFunctionDef);
                 throw new RuntimeException(e.getMessage(), e);
@@ -531,6 +596,10 @@ public class DolphinDbWriter extends Writer {
         public void post() {
             LOG.info("post is invoked");
             insertToDolphinDB(createUploadTable());
+
+            if (!this.postSql.isEmpty()) {
+                executePostSql(this.postSql);
+            }
         }
 
         @Override
