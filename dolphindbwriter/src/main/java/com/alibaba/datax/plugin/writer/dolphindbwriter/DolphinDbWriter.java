@@ -26,6 +26,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 public class DolphinDbWriter extends Writer {
@@ -85,6 +87,10 @@ public class DolphinDbWriter extends Writer {
         private List<Entity.DATA_TYPE> colTypes_ = null;
         private List<List> colDatas_ = null;
 
+        private HashMap<Integer, Integer> writeToReadIndexMap;
+
+        private boolean useColumnsParamNotEmpty = false;
+
         @Override
         public void startWrite(RecordReceiver lineReceiver) {
 
@@ -110,12 +116,11 @@ public class DolphinDbWriter extends Writer {
                 List firstColumn = colDatas_.get(0);
                 if (firstColumn.size() >= batchSize) {
                     insertToDolphinDB(createUploadTable());
-
-                    if (!columnArr.isEmpty()) {
-                        initColumn(columnArr);
-                    } else if (!fieldArr.isEmpty()) {
-                        initTable(fieldArr);
-                    }
+//                    if (columnArr != null) {
+//                        initColumn(columnArr);
+//                    } else if (fieldArr != null) {
+//                        initTable(fieldArr);
+//                    }
                 }
             }
         }
@@ -150,12 +155,91 @@ public class DolphinDbWriter extends Writer {
             }
         }
 
-        private void recordToBasicTable(Record record) {
+        private void recordToBasicTable(Record record) throws RuntimeException {
             int recordLength = record.getColumnNumber();
             Column column;
-            for (int i = 0; i < recordLength; i++) {
-                column = record.getColumn(i);
-                setData(i, column);
+            if(useColumnsParamNotEmpty && writeToReadIndexMap.size() != recordLength)
+                throw new RuntimeException("The columns size of reader isn't equal to the size of param columns. ");
+            if(!useColumnsParamNotEmpty && colDatas_.size() != recordLength)
+                throw new RuntimeException("The columns size of reader isn't equal to the columns size of table to write. ");
+            for (int i = 0; i < colDatas_.size(); i++) {
+                int readIndex = i;
+                if(useColumnsParamNotEmpty){
+                    if(!writeToReadIndexMap.containsKey(i)){
+                        setNullData(i);
+                        continue;
+                    }
+                    else{
+                        readIndex = writeToReadIndexMap.get(i);
+                    }
+                }
+                column = record.getColumn(readIndex);
+                if(column.getRawData() == null)
+                    setNullData(i);
+                else
+                    setData(i, column);
+            }
+        }
+
+        private void setNullData(int index){
+            List colData = colDatas_.get(index);
+            Entity.DATA_TYPE targetType = colTypes_.get(index);
+            switch (targetType) {
+                case DT_DOUBLE:
+                    colData.add(-Double.MAX_VALUE);
+                    break;
+                case DT_FLOAT:
+                    colData.add(-Float.MAX_VALUE);
+                    break;
+                case DT_BOOL:
+                    colData.add((byte) -128);
+                    break;
+                case DT_DATE:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_MONTH:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_DATETIME:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_TIME:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_SECOND:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_TIMESTAMP:
+                    colData.add(Long.MIN_VALUE);
+                    break;
+                case DT_NANOTIME:
+                    colData.add(Long.MIN_VALUE);
+                    break;
+                case DT_NANOTIMESTAMP:
+                    colData.add(Long.MIN_VALUE);
+                    break;
+                case DT_LONG:
+                    colData.add(Long.MIN_VALUE);
+                    break;
+                case DT_INT:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_UUID:
+                    colData.add(new Long2(0, 0));
+                    break;
+                case DT_SHORT:
+                    colData.add(Short.MIN_VALUE);
+                    break;
+                case DT_STRING:
+                case DT_SYMBOL:
+                case DT_BLOB:
+                    colData.add("");
+                    break;
+                case DT_BYTE:
+                    colData.add((byte) -128);
+                    break;
+                default:
+                    throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
             }
         }
 
@@ -165,111 +249,61 @@ public class DolphinDbWriter extends Writer {
             try {
                 switch (targetType) {
                     case DT_DOUBLE:
-                        if (column.getRawData() == null)
-                            colData.add(-Double.MAX_VALUE);
-                        else
-                            colData.add(column.asDouble());
+                        colData.add(column.asDouble());
                         break;
                     case DT_FLOAT:
-                        if (column.getRawData() == null)
-                            colData.add(-Float.MAX_VALUE);
-                        else
-                            colData.add(Float.parseFloat(column.asString()));
+                        colData.add(Float.parseFloat(column.asString()));
                         break;
                     case DT_BOOL:
-                        if (column.getRawData() == null)
-                            colData.add((byte) -128);
-                        else
-                            colData.add(column.asBoolean() == true ? (byte) 1 : (byte) 0);
+                        colData.add(column.asBoolean() == true ? (byte) 1 : (byte) 0);
                         break;
                     case DT_DATE:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else
-                            colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
+                        colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
                         break;
                     case DT_MONTH:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else {
-                            LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                            colData.add(Utils.countMonths(d.getYear(), d.getMonthValue()));
-                        }
+                        LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                        colData.add(Utils.countMonths(d.getYear(), d.getMonthValue()));
                         break;
                     case DT_DATETIME:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else
-                            colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
                         break;
                     case DT_TIME:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else
-                            colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
                         break;
                     case DT_SECOND:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else
-                            colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
                         break;
                     case DT_TIMESTAMP:
-                        if (column.getRawData() == null)
-                            colData.add(Long.MIN_VALUE);
-                        else
-                            colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
                         break;
                     case DT_NANOTIME:
-                        if (column.getRawData() == null)
-                            colData.add(Long.MIN_VALUE);
-                        else
-                            colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
                         break;
                     case DT_NANOTIMESTAMP:
-                        if (column.getRawData() == null)
-                            colData.add(Long.MIN_VALUE);
-                        else
-                            colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
                         break;
                     case DT_LONG:
-                        if (column.getRawData() == null)
-                            colData.add(Long.MIN_VALUE);
-                        else
-                            colData.add(column.asLong());
+                        colData.add(column.asLong());
                         break;
                     case DT_INT:
-                        if (column.getRawData() == null)
-                            colData.add(Integer.MIN_VALUE);
-                        else
-                            colData.add(Integer.parseInt(column.asString()));
+                        colData.add(Integer.parseInt(column.asString()));
                         break;
                     case DT_UUID:
-                        if (column.getRawData() == null)
-                            colData.add(new Long2(0, 0));
-                        else
-                            colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
+                        colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
                         break;
                     case DT_SHORT:
-                        if (column.getRawData() == null)
-                            colData.add(Short.MIN_VALUE);
-                        else
-                            colData.add(Short.parseShort(column.asString()));
+                        colData.add(Short.parseShort(column.asString()));
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
                     case DT_BLOB:
-                        if (column.getRawData() == null)
-                            colData.add("");
-                        else
-                            colData.add(column.asString());
+                        colData.add(column.asString());
                         break;
                     case DT_BYTE:
-                        if (column.getRawData() == null)
-                            colData.add((byte) -128);
-                        else
-                            colData.add(column.asBytes());
+                        colData.add(column.asBytes());
                         break;
+                        default:
+                            throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
                 }
             }catch (Exception ex){
                 LOG.info("Parse error : colName=" + colNames_.get(index));
@@ -442,8 +476,10 @@ public class DolphinDbWriter extends Writer {
             this.colNames_ = new ArrayList<>();
             this.colDatas_ = new ArrayList<>();
             this.colTypes_ = new ArrayList<>();
+            this.writeToReadIndexMap = new HashMap<>();
+            this.useColumnsParamNotEmpty = false;
 
-            if (fieldArr.toString().equals("[]")){
+            if (fieldArr.toString().equals("[\"*\"]")){
                 try {
                     BasicDictionary schema;
                     if (this.dbName == null || dbName.equals("")){
@@ -466,28 +502,59 @@ public class DolphinDbWriter extends Writer {
                     LOG.error(e.getMessage(), e);
                 }
             } else {
-                for (int i = 0; i < fieldArr.size(); i++) {
-                    Object field = fieldArr.get(i);
-                    String colName = field.toString();
-                    try {
-                        BasicDictionary schema;
-                        if (this.dbName == null || dbName.equals("")) {
-                            schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
-                        } else {
-                            schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
-                        }
-                        BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
-                        BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
-                        for (int j = 0; j < colDefs.rows(); j++){
-                            Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(j));
-                            List colData = getListFromColumn(type);
-                            this.colDatas_.add(colData);
-                            this.colTypes_.add(type);
-                        }
-                    } catch (Exception e){
-                        LOG.error(e.getMessage(), e);
+                this.useColumnsParamNotEmpty = true;
+                try {
+                    BasicDictionary schema;
+                    if (this.dbName == null || dbName.equals("")) {
+                        schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                    } else {
+                        schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
                     }
-                    this.colNames_.add(colName);
+                    BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
+                    BasicStringVector writerColNames = (BasicStringVector) colDefs.getColumn("name");
+                    BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+
+                    //get read colname list, check colname whether have same
+                    HashSet<String> readColNamesSet = new HashSet<>();
+                    List<String> readColNames = new ArrayList<>();
+                    for (int i = 0; i < fieldArr.size(); i++){
+                        Object field = fieldArr.get(i);
+                        String colName = field.toString();
+                        if(readColNamesSet.contains(colName))
+                            throw new Exception("colName can be same in columns parameter. ");
+                        readColNamesSet.add(colName);
+                        readColNames.add(colName);
+                    }
+
+                    //create map(writeColName, writeColumnIndx)
+                    HashMap<String, Integer> writeColNamesIndex = new HashMap<String, Integer>();
+                    for (int i = 0; i < writerColNames.rows(); i++){
+                        String colName = writerColNames.getString(i);
+                        if(writeColNamesIndex.containsKey(colName))
+                            throw new Exception("colName can be same in table to write.");
+                        writeColNamesIndex.put(colName, i);
+                    }
+
+                    //create map(writeColumnIndex, readColumnIndex)
+                    //the size of param columns must be not less than the columns of table to write
+                    //the size of param columns must be equal to size of reader columns, check when recordToBasicTable
+                    for(int i = 0; i < readColNames.size(); ++i){
+                        if(!writeColNamesIndex.containsKey(readColNames.get(i)))
+                            throw new Exception("The " + readColNames.get(i) + " column in columns parameter does not exist in table to write");
+                        int writeIndex =  writeColNamesIndex.get(readColNames.get(i));
+                        writeToReadIndexMap.put(writeIndex, i);
+                    }
+
+                    for(int i = 0; i < writerColNames.rows(); ++i){
+                        this.colNames_.add(writerColNames.getString(i));
+                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
+                        List colData = getListFromColumn(type);
+                        this.colDatas_.add(colData);
+                        this.colTypes_.add(type);
+                    }
+
+                }catch (Exception e){
+                    LOG.error(e.getMessage(), e);
                 }
             }
         }
@@ -581,9 +648,9 @@ public class DolphinDbWriter extends Writer {
                     dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
                 }
 
-                if (!columnArr.isEmpty()) {
+                if (columnArr != null) {
                     initColumn(columnArr);
-                } else if (!fieldArr.isEmpty()) {
+                } else if (fieldArr != null) {
                     initTable(fieldArr);
                 }
             } catch (IOException e) {
