@@ -22,8 +22,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -66,10 +64,21 @@ public class DolphinDbWriter extends Writer {
             this.writerConfig.getNecessaryValue(Key.HOST, DolphinDbWriterErrorCode.REQUIRED_VALUE);
             this.writerConfig.getNecessaryValue(Key.PORT, DolphinDbWriterErrorCode.REQUIRED_VALUE);
             if (StringUtils.isEmpty(this.writerConfig.getString(Key.PASSWORD)) && StringUtils.isEmpty(this.writerConfig.getString(Key.PWD))) {
-                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "您提供配置文件有误，password 或 pwd 必填其一，不允许为空或者留白；优先推荐填写password.");
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is incorrect. One of password or pwd must be filled in. It is not allowed to be empty or blank; it is recommended to fill in password.");
+            } else if (StringUtils.isNotEmpty(this.writerConfig.getString(Key.PASSWORD)) && StringUtils.isNotEmpty(this.writerConfig.getString(Key.PWD))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is incorrect. One of password or pwd must be filled in. It is not allowed to be empty or blank; it is recommended to fill in password.");
             }
+
             if (StringUtils.isEmpty(this.writerConfig.getString(Key.USER_ID)) && StringUtils.isEmpty(this.writerConfig.getString(Key.USERNAME))) {
-                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "您提供配置文件有误，userId 或 username 必填其一，不允许为空或者留白；优先推荐填写username.");
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either userId or username must be filled in, empty or blank is not allowed; it is recommended to fill in username first.");
+            } else if (StringUtils.isNotEmpty(this.writerConfig.getString(Key.USER_ID)) && StringUtils.isNotEmpty(this.writerConfig.getString(Key.USERNAME))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either userId or username must be filled in, empty or blank is not allowed; it is recommended to fill in username first.");
+            }
+
+            if (CollectionUtils.isEmpty(this.writerConfig.getList(Key.TABLE)) && CollectionUtils.isEmpty(this.writerConfig.getList(Key.COLUMN))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either table or column must be filled in, empty or blank is not allowed.");
+            } else if (CollectionUtils.isNotEmpty(this.writerConfig.getList(Key.TABLE)) && CollectionUtils.isNotEmpty(this.writerConfig.getList(Key.COLUMN))) {
+                throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either table or column must be filled in, empty or blank is not allowed.");
             }
         }
     }
@@ -92,7 +101,6 @@ public class DolphinDbWriter extends Writer {
 
         private boolean useColumnsParamNotEmpty = false;
 
-        private static final BigDecimal DECIMAL128_MIN_VALUE = new BigDecimal("-170141183460469231731687303715884105728");
 
         @Override
         public void startWrite(RecordReceiver lineReceiver) {
@@ -230,15 +238,6 @@ public class DolphinDbWriter extends Writer {
                 case DT_BYTE:
                     colData.add((byte) -128);
                     break;
-                case DT_DECIMAL32:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_DECIMAL64:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_DECIMAL128:
-                    colData.add(DECIMAL128_MIN_VALUE);
-                    break;
                 default:
                     throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
             }
@@ -303,15 +302,6 @@ public class DolphinDbWriter extends Writer {
                     case DT_BYTE:
                         colData.add(column.asBytes());
                         break;
-                    case DT_DECIMAL32:
-                        colData.add(column.asString());
-                        break;
-                    case DT_DECIMAL64:
-                        colData.add(column.asString());
-                        break;
-                    case DT_DECIMAL128:
-                        colData.add(column.asString());
-                        break;
                     default:
                         throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
                 }
@@ -360,11 +350,6 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_BYTE:
                     vec = new ArrayList<Byte>();
-                    break;
-                case DT_DECIMAL32:
-                case DT_DECIMAL64:
-                case DT_DECIMAL128:
-                    vec = new ArrayList<BigDecimal>();
                     break;
             }
             if (vec == null) LOG.info(targetType.toString() + " get Vec is NULL!!!!!");
@@ -438,45 +423,6 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
-                    break;
-                case DT_DECIMAL32:
-                    vec = new BasicDecimal32Vector(colData.size());
-                    for (int i = 0; i < colData.size(); i++) {
-                        String s = (String) colData.get(i);
-                        double v = Double.parseDouble(s);
-                        BasicDecimal32 scalar = new BasicDecimal32(v, s.length());
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    break;
-                case DT_DECIMAL64:
-                    vec = new BasicDecimal64Vector(colData.size());
-                    for (int i = 0; i < colData.size(); i++) {
-                        String s = (String) colData.get(i);
-                        long v = Long.valueOf(s);
-                        BasicDecimal64 scalar = new BasicDecimal64(v, s.length());
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    break;
-                case DT_DECIMAL128:
-                    vec = new BasicDecimal128Vector(colData.size());
-                    for (int i = 0; i < colData.size(); i++) {
-                        String s = (String) colData.get(i);
-                        BigInteger bigInteger = new BigInteger(s);
-                        BasicDecimal128 scalar = new BasicDecimal128(bigInteger, s.length());
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
                     break;
             }
             return vec;
@@ -629,6 +575,8 @@ public class DolphinDbWriter extends Writer {
 
             String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
             String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
+
+            // table:
             List<Object> tableField = this.writerConfig.getList(Key.TABLE);
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
             String dbName = this.writerConfig.getString(Key.DB_PATH);
