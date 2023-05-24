@@ -151,7 +151,7 @@ public class DolphinDbWriter extends Writer {
             int recordLength = record.getColumnNumber();
             Column column;
             if(useColumnsParamNotEmpty && writeToReadIndexMap.size() != recordLength)
-                throw new RuntimeException("The columns size of reader isn't equal to the size of param columns. ");
+                throw new RuntimeException("The columns size of reader isn't equal to the size of writer. ");
             if(!useColumnsParamNotEmpty && colDatas_.size() != recordLength)
                 throw new RuntimeException("The columns size of reader isn't equal to the columns size of table to write. ");
             for (int i = 0; i < colDatas_.size(); i++) {
