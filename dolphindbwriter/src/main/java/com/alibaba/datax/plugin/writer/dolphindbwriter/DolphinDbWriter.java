@@ -75,9 +75,9 @@ public class DolphinDbWriter extends Writer {
                 throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either userId or username must be filled in, empty or blank is not allowed; it is recommended to fill in username first.");
             }
 
-            if (CollectionUtils.isEmpty(this.writerConfig.getList(Key.TABLE)) && CollectionUtils.isEmpty(this.writerConfig.getList(Key.COLUMN))) {
+            if (StringUtils.isEmpty(this.writerConfig.getString(Key.TABLE)) && StringUtils.isEmpty(this.writerConfig.getString(Key.COLUMN))) {
                 throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either table or column must be filled in, empty or blank is not allowed.");
-            } else if (CollectionUtils.isNotEmpty(this.writerConfig.getList(Key.TABLE)) && CollectionUtils.isNotEmpty(this.writerConfig.getList(Key.COLUMN))) {
+            } else if (StringUtils.isNotEmpty(this.writerConfig.getString(Key.TABLE)) && StringUtils.isNotEmpty(this.writerConfig.getString(Key.COLUMN))) {
                 throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either table or column must be filled in, empty or blank is not allowed.");
             }
         }
