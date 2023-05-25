@@ -361,6 +361,7 @@ public class DolphinDbWriter extends Writer {
             List<String> columnNames = new ArrayList<>();
             for (int i = 0; i < colNames_.size(); i++){
                 columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i)));
+                colDatas_.clear();
                 columnNames.add(colNames_.get(i));
             }
             return new BasicTable(columnNames, columns);
