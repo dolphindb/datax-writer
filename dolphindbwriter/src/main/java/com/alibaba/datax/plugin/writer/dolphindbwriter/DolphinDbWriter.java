@@ -22,6 +22,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -100,6 +102,8 @@ public class DolphinDbWriter extends Writer {
         private HashMap<Integer, Integer> writeToReadIndexMap;
 
         private boolean useColumnsParamNotEmpty = false;
+
+        private static final BigDecimal DECIMAL128_MIN_VALUE = new BigDecimal("-170141183460469231731687303715884105728");
 
 
         @Override
@@ -238,6 +242,15 @@ public class DolphinDbWriter extends Writer {
                 case DT_BYTE:
                     colData.add((byte) -128);
                     break;
+                case DT_DECIMAL32:
+                    colData.add(Integer.MIN_VALUE);
+                    break;
+                case DT_DECIMAL64:
+                    colData.add(Long.MIN_VALUE);
+                    break;
+                case DT_DECIMAL128:
+                    colData.add(DECIMAL128_MIN_VALUE);
+                    break;
                 default:
                     throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
             }
@@ -302,6 +315,15 @@ public class DolphinDbWriter extends Writer {
                     case DT_BYTE:
                         colData.add(column.asBytes());
                         break;
+                    case DT_DECIMAL32:
+                        colData.add(column.asString());
+                        break;
+                    case DT_DECIMAL64:
+                        colData.add(column.asString());
+                        break;
+                    case DT_DECIMAL128:
+                        colData.add(column.asString());
+                        break;
                     default:
                         throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
                 }
@@ -350,6 +372,11 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_BYTE:
                     vec = new ArrayList<Byte>();
+                    break;
+                case DT_DECIMAL32:
+                case DT_DECIMAL64:
+                case DT_DECIMAL128:
+                    vec = new ArrayList<BigDecimal>();
                     break;
             }
             if (vec == null) LOG.info(targetType.toString() + " get Vec is NULL!!!!!");
@@ -426,6 +453,46 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
+                    break;
+                case DT_DECIMAL32:
+                    vec = new BasicDecimal32Vector(colData.size());
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        double v = Double.parseDouble(s);
+                        BasicDecimal32 scalar = new BasicDecimal32(v, s.length());
+                        try {
+                            vec.set(i, scalar);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    break;
+                case DT_DECIMAL64:
+                    vec = new BasicDecimal64Vector(colData.size());
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        double v = Double.parseDouble(s);
+                        BasicDecimal64 scalar = new BasicDecimal64(v, s.length());
+                        try {
+                            vec.set(i, scalar);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    break;
+                case DT_DECIMAL128:
+                    vec = new BasicDecimal128Vector(colData.size());
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        BigDecimal decimal = new BigDecimal(s);
+                        BigInteger bigInteger = decimal.scaleByPowerOfTen(s.length()).toBigInteger();
+                        BasicDecimal128 scalar = new BasicDecimal128(bigInteger, s.length());
+                        try {
+                            vec.set(i, scalar);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
                     break;
             }
             return vec;
