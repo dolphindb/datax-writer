@@ -458,8 +458,9 @@ public class DolphinDbWriter extends Writer {
                     vec = new BasicDecimal32Vector(colData.size());
                     for (int i = 0; i < colData.size(); i++) {
                         String s = (String) colData.get(i);
+                        String[] split = s.split("\\.");
                         double v = Double.parseDouble(s);
-                        BasicDecimal32 scalar = new BasicDecimal32(v, s.length());
+                        BasicDecimal32 scalar = new BasicDecimal32(v, split[1].length());
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
@@ -471,8 +472,9 @@ public class DolphinDbWriter extends Writer {
                     vec = new BasicDecimal64Vector(colData.size());
                     for (int i = 0; i < colData.size(); i++) {
                         String s = (String) colData.get(i);
+                        String[] split = s.split("\\.");
                         double v = Double.parseDouble(s);
-                        BasicDecimal64 scalar = new BasicDecimal64(v, s.length());
+                        BasicDecimal64 scalar = new BasicDecimal64(v, split[1].length());
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
@@ -484,9 +486,10 @@ public class DolphinDbWriter extends Writer {
                     vec = new BasicDecimal128Vector(colData.size());
                     for (int i = 0; i < colData.size(); i++) {
                         String s = (String) colData.get(i);
-                        BigDecimal decimal = new BigDecimal(s);
-                        BigInteger bigInteger = decimal.scaleByPowerOfTen(s.length()).toBigInteger();
-                        BasicDecimal128 scalar = new BasicDecimal128(bigInteger, s.length());
+                        String[] split = s.split("\\.");
+                        double value = Double.parseDouble(s);
+                        BasicDecimal128 scalar = new BasicDecimal128(value, split[1].length());
+                        LOG.info("scalar: "  + scalar.getString());
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
