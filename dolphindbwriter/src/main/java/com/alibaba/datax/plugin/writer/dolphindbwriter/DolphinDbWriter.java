@@ -463,7 +463,12 @@ public class DolphinDbWriter extends Writer {
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         double v = Double.parseDouble(s);
-                        BasicDecimal32 scalar = new BasicDecimal32(v, split[1].length());
+                        BasicDecimal32 scalar;
+                        if (split.length == 1) {
+                            scalar = new BasicDecimal32(v, 0);
+                        } else {
+                            scalar = new BasicDecimal32(v, split[1].length());
+                        }
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
@@ -477,7 +482,12 @@ public class DolphinDbWriter extends Writer {
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         double v = Double.parseDouble(s);
-                        BasicDecimal64 scalar = new BasicDecimal64(v, split[1].length());
+                        BasicDecimal64 scalar;
+                        if (split.length == 1) {
+                            scalar = new BasicDecimal64(v, 0);
+                        } else {
+                            scalar = new BasicDecimal64(v, split[1].length());
+                        }
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
