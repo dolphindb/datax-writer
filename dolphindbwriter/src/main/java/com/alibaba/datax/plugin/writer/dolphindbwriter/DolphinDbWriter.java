@@ -131,6 +131,9 @@ public class DolphinDbWriter extends Writer {
 
         private void insertToDolphinDB(BasicTable bt) {
             LOG.info("begin to write BasicTable rows = " + String.valueOf(bt.rows()));
+            if (bt.rows() == 0) {
+                return;
+            }
             List<Entity> args = new ArrayList<>();
             args.add(bt);
             try {
