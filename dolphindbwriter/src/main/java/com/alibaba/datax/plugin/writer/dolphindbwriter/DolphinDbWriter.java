@@ -491,7 +491,12 @@ public class DolphinDbWriter extends Writer {
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         double value = Double.parseDouble(s);
-                        BasicDecimal128 scalar = new BasicDecimal128(value, split[1].length());
+                        BasicDecimal128 scalar;
+                        if (split.length == 1) {
+                            scalar = new BasicDecimal128(value, 0);
+                        } else {
+                            scalar = new BasicDecimal128(value, split[1].length());
+                        }
                         try {
                             vec.set(i, scalar);
                         } catch (Exception e) {
