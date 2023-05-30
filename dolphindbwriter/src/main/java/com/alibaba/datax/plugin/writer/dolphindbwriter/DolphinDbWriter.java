@@ -455,8 +455,16 @@ public class DolphinDbWriter extends Writer {
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
                     break;
-                case DT_DECIMAL32:
-                    vec = new BasicDecimal32Vector(colData.size());
+                case DT_DECIMAL32: {
+                    int scale = 0;
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        String[] split = s.split("\\.");
+                        if (split.length != 1) {
+                            scale = split[1].length() > scale ? split[1].length() : scale;
+                        }
+                    }
+                    vec = new BasicDecimal32Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal32 scalar;
                         if (colData.get(i).equals(Integer.MIN_VALUE)) {
@@ -480,8 +488,17 @@ public class DolphinDbWriter extends Writer {
                         }
                     }
                     break;
-                case DT_DECIMAL64:
-                    vec = new BasicDecimal64Vector(colData.size());
+                }
+                case DT_DECIMAL64: {
+                    int scale = 0;
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        String[] split = s.split("\\.");
+                        if (split.length != 1) {
+                            scale = split[1].length() > scale ? split[1].length() : scale;
+                        }
+                    }
+                    vec = new BasicDecimal64Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal64 scalar;
                         if (colData.get(i).equals(Long.MIN_VALUE)) {
@@ -505,8 +522,17 @@ public class DolphinDbWriter extends Writer {
                         }
                     }
                     break;
-                case DT_DECIMAL128:
-                    vec = new BasicDecimal128Vector(colData.size());
+                }
+                case DT_DECIMAL128:{
+                    int scale = 0;
+                    for (int i = 0; i < colData.size(); i++) {
+                        String s = (String) colData.get(i);
+                        String[] split = s.split("\\.");
+                        if (split.length != 1) {
+                            scale = split[1].length() > scale ? split[1].length() : scale;
+                        }
+                    }
+                    vec = new BasicDecimal128Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal128 scalar;
                         if (colData.get(i).equals(DECIMAL128_MIN_VALUE)) {
@@ -531,6 +557,7 @@ public class DolphinDbWriter extends Writer {
                         }
                     }
                     break;
+                }
             }
             return vec;
         }
