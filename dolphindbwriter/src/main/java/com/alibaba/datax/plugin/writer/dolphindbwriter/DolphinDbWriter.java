@@ -458,12 +458,15 @@ public class DolphinDbWriter extends Writer {
                 case DT_DECIMAL32: {
                     int scale = 0;
                     for (int i = 0; i < colData.size(); i++) {
+                        if (colData.get(i).equals(Integer.MIN_VALUE))
+                            continue;
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         if (split.length != 1) {
                             scale = split[1].length() > scale ? split[1].length() : scale;
                         }
                     }
+                    if(scale > 9) scale = 9;
                     vec = new BasicDecimal32Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal32 scalar;
@@ -492,12 +495,15 @@ public class DolphinDbWriter extends Writer {
                 case DT_DECIMAL64: {
                     int scale = 0;
                     for (int i = 0; i < colData.size(); i++) {
+                        if (colData.get(i).equals(Long.MIN_VALUE))
+                            continue;
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         if (split.length != 1) {
                             scale = split[1].length() > scale ? split[1].length() : scale;
                         }
                     }
+                    if(scale > 18) scale = 18;
                     vec = new BasicDecimal64Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal64 scalar;
@@ -526,12 +532,15 @@ public class DolphinDbWriter extends Writer {
                 case DT_DECIMAL128:{
                     int scale = 0;
                     for (int i = 0; i < colData.size(); i++) {
+                        if (colData.get(i).equals(DECIMAL128_MIN_VALUE))
+                            continue;
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
                         if (split.length != 1) {
                             scale = split[1].length() > scale ? split[1].length() : scale;
                         }
                     }
+                    if(scale > 38) scale = 38;
                     vec = new BasicDecimal128Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal128 scalar;
