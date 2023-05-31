@@ -536,9 +536,15 @@ public class DolphinDbWriter extends Writer {
                             continue;
                         String s = (String) colData.get(i);
                         String[] split = s.split("\\.");
-                        if (split.length != 1) {
-                            scale = split[1].length() > scale ? split[1].length() : scale;
+                        if (split.length > 1) {
+                            String[] splitE = split[1].split("E-");
+                            if(splitE.length > 1){
+                                int splitEScale = Integer.parseInt(splitE[1]);
+                                scale = splitEScale > scale ? splitEScale : scale;
+                            }else
+                                scale = split[1].length() > scale ? split[1].length() : scale;
                         }
+
                     }
                     if(scale > 38) scale = 38;
                     vec = new BasicDecimal128Vector(colData.size(), scale);
@@ -549,14 +555,8 @@ public class DolphinDbWriter extends Writer {
                             scalar.setNull();
                         } else {
                             String s = (String) colData.get(i);
-                            String[] split = s.split("\\.");
-                            double value = Double.parseDouble(s);
 
-                            if (split.length == 1) {
-                                scalar = new BasicDecimal128(value, 0);
-                            } else {
-                                scalar = new BasicDecimal128(value, split[1].length());
-                            }
+                            scalar = new BasicDecimal128(s, scale);
                         }
 
                         try {
