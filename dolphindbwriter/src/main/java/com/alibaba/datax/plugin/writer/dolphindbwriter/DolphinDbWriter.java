@@ -97,6 +97,8 @@ public class DolphinDbWriter extends Writer {
         private List<Entity.DATA_TYPE> colTypes_ = null;
         private List<List> colDatas_ = null;
 
+        private List<Integer> extras_ = null;
+
         private HashMap<Integer, Integer> writeToReadIndexMap;
 
         private boolean useColumnsParamNotEmpty = false;
@@ -388,7 +390,7 @@ public class DolphinDbWriter extends Writer {
             List<Vector> columns = new ArrayList<>();
             List<String> columnNames = new ArrayList<>();
             for (int i = 0; i < colNames_.size(); i++){
-                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i)));
+                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i), extras_.get(i)));
                 columnNames.add(colNames_.get(i));
             }
             for (int i = 0; i < colNames_.size(); i++) {
@@ -397,7 +399,7 @@ public class DolphinDbWriter extends Writer {
             return new BasicTable(columnNames, columns);
         }
 
-        private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType) {
+        private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType, int extra) {
             Vector vec = null;
             switch (targetType) {
                 case DT_DOUBLE:
@@ -530,23 +532,7 @@ public class DolphinDbWriter extends Writer {
                     break;
                 }
                 case DT_DECIMAL128:{
-                    int scale = 0;
-                    for (int i = 0; i < colData.size(); i++) {
-                        if (colData.get(i).equals(DECIMAL128_MIN_VALUE))
-                            continue;
-                        String s = (String) colData.get(i);
-                        String[] split = s.split("\\.");
-                        if (split.length > 1) {
-                            String[] splitE = split[1].split("E-");
-                            if(splitE.length > 1){
-                                int splitEScale = Integer.parseInt(splitE[1]);
-                                scale = splitEScale > scale ? splitEScale : scale;
-                            }else
-                                scale = split[1].length() > scale ? split[1].length() : scale;
-                        }
-
-                    }
-                    if(scale > 38) scale = 38;
+                    int scale = extra;
                     vec = new BasicDecimal128Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal128 scalar;
@@ -575,6 +561,7 @@ public class DolphinDbWriter extends Writer {
             this.colNames_ = new ArrayList<>();
             this.colDatas_ = new ArrayList<>();
             this.colTypes_ = new ArrayList<>();
+            this.extras_ = new ArrayList<>();
             if (fieldArr.toString().equals("[]")){
                 try {
                     BasicDictionary schema;
@@ -586,6 +573,7 @@ public class DolphinDbWriter extends Writer {
                     BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
                     BasicStringVector colNames = (BasicStringVector) colDefs.getColumn("name");
                     BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                    BasicIntVector extraInt = (BasicIntVector) colDefs.getColumn("extra");
                     for (int i = 0; i < colDefs.rows(); i++){
                         Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
                         String colName = colNames.getString(i);
@@ -593,6 +581,7 @@ public class DolphinDbWriter extends Writer {
                         this.colNames_.add(colName);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
+                        this.extras_.add(extraInt.getInt(i));
                     }
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
@@ -616,6 +605,7 @@ public class DolphinDbWriter extends Writer {
             this.colTypes_ = new ArrayList<>();
             this.writeToReadIndexMap = new HashMap<>();
             this.useColumnsParamNotEmpty = false;
+            this.extras_ = new ArrayList<>();
 
             if (fieldArr.toString().equals("[\"*\"]")){
                 try {
@@ -628,6 +618,7 @@ public class DolphinDbWriter extends Writer {
                     BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
                     BasicStringVector colNames = (BasicStringVector) colDefs.getColumn("name");
                     BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                    BasicIntVector extraInt = (BasicIntVector) colDefs.getColumn("extra");
                     for (int i = 0; i < colDefs.rows(); i++){
                         Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
                         String colName = colNames.getString(i);
@@ -635,6 +626,7 @@ public class DolphinDbWriter extends Writer {
                         this.colNames_.add(colName);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
+                        this.extras_.add(extraInt.getInt(i));
                     }
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
@@ -651,6 +643,7 @@ public class DolphinDbWriter extends Writer {
                     BasicTable colDefs = (BasicTable) schema.get(new BasicString("colDefs"));
                     BasicStringVector writerColNames = (BasicStringVector) colDefs.getColumn("name");
                     BasicIntVector colTypeInt = (BasicIntVector) colDefs.getColumn("typeInt");
+                    BasicIntVector extraInt = (BasicIntVector) colDefs.getColumn("extra");
 
                     //get read colname list, check colname whether have same
                     HashSet<String> readColNamesSet = new HashSet<>();
@@ -689,6 +682,7 @@ public class DolphinDbWriter extends Writer {
                         List colData = getListFromColumn(type);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
+                        this.extras_.add(extraInt.getInt(i));
                     }
 
                 }catch (Exception e){
