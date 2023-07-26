@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
@@ -458,32 +457,16 @@ public class DolphinDbWriter extends Writer {
                     vec = new BasicByteVector(colData);
                     break;
                 case DT_DECIMAL32: {
-                    int scale = 0;
-                    for (int i = 0; i < colData.size(); i++) {
-                        if (colData.get(i).equals(Integer.MIN_VALUE))
-                            continue;
-                        String s = (String) colData.get(i);
-                        String[] split = s.split("\\.");
-                        if (split.length != 1) {
-                            scale = split[1].length() > scale ? split[1].length() : scale;
-                        }
-                    }
-                    if(scale > 9) scale = 9;
+                    int scale = extra;
                     vec = new BasicDecimal32Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal32 scalar;
                         if (colData.get(i).equals(Integer.MIN_VALUE)) {
-                            scalar = new BasicDecimal32(0, 0);
+                            scalar = new BasicDecimal32("0", 0);
                             scalar.setNull();
                         } else {
                             String s = (String) colData.get(i);
-                            String[] split = s.split("\\.");
-                            double v = Double.parseDouble(s);
-                            if (split.length == 1) {
-                                scalar = new BasicDecimal32(v, 0);
-                            } else {
-                                scalar = new BasicDecimal32(v, split[1].length());
-                            }
+                            scalar = new BasicDecimal32(s, scale);
                         }
 
                         try {
@@ -495,32 +478,16 @@ public class DolphinDbWriter extends Writer {
                     break;
                 }
                 case DT_DECIMAL64: {
-                    int scale = 0;
-                    for (int i = 0; i < colData.size(); i++) {
-                        if (colData.get(i).equals(Long.MIN_VALUE))
-                            continue;
-                        String s = (String) colData.get(i);
-                        String[] split = s.split("\\.");
-                        if (split.length != 1) {
-                            scale = split[1].length() > scale ? split[1].length() : scale;
-                        }
-                    }
-                    if(scale > 18) scale = 18;
+                    int scale = extra;
                     vec = new BasicDecimal64Vector(colData.size(), scale);
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal64 scalar;
                         if (colData.get(i).equals(Long.MIN_VALUE)) {
-                            scalar = new BasicDecimal64(0, 0);
+                            scalar = new BasicDecimal64("0", 0);
                             scalar.setNull();
                         } else {
                             String s = (String) colData.get(i);
-                            String[] split = s.split("\\.");
-                            double v = Double.parseDouble(s);
-                            if (split.length == 1) {
-                                scalar = new BasicDecimal64(v, 0);
-                            } else {
-                                scalar = new BasicDecimal64(v, split[1].length());
-                            }
+                            scalar = new BasicDecimal64(s, scale);
                         }
 
                         try {
@@ -537,11 +504,10 @@ public class DolphinDbWriter extends Writer {
                     for (int i = 0; i < colData.size(); i++) {
                         BasicDecimal128 scalar;
                         if (colData.get(i).equals(DECIMAL128_MIN_VALUE)) {
-                            scalar = new BasicDecimal128(0, 0);
+                            scalar = new BasicDecimal128("0", 0);
                             scalar.setNull();
                         } else {
                             String s = (String) colData.get(i);
-
                             scalar = new BasicDecimal128(s, scale);
                         }
 
