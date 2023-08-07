@@ -1,41 +1,39 @@
 # 基于 DataX 的 DolphinDB 数据导入工具
 
-## 1. 使用场景
-
 DataX-dolphindbwriter 是为解决用户将不同数据来源的数据同步到 DolphinDB 而开发的插件。这类数据的特征是改动很少，并且数据分散在不同的数据库系统中。
 
-## 2. DataX 离线数据同步
+## 1. DataX 离线数据同步
 
 DataX 是在阿里巴巴集团内被广泛使用的离线数据同步工具/平台，实现包括 MySQL、Oracle、SqlServer、Postgre、HDFS、Hive、ADS、HBase、TableStore(OTS)、MaxCompute(ODPS)、DRDS 等各种异构数据源之间高效的数据同步功能，详情可查看 [DataX 已支持的数据源](https://github.com/alibaba/DataX/blob/master/README.md#support-data-channels)。
 
 DataX 是可扩展的数据同步框架，将不同数据源的同步抽象为从源头数据源读取数据的 Reader 插件，以及向目标端写入数据的 Writer 插件。理论上 DataX 框架可以支持任意数据源类型的数据同步工作。每接入一套新数据源该新加入的数据源即可实现和现有的数据源互通。
 
-**DataX 插件：dolphindbwriter**
+### DataX 插件：dolphindbwriter
 
-基于 DataX 的扩展功能，dolphindbwriter 插件实现了向 DolphinDB 写入数据，使用 DataX 的现有 reader 插件结合 DolphinDBWriter 插件，即可满足从不同数据源向 DolphinDB 同步数据。
+基于 DataX 的扩展功能，dolphindbwriter 插件实现了向 DolphinDB 写入数据。使用 DataX 的现有 reader 插件结合 DolphinDBWriter 插件，即可满足从不同数据源向 DolphinDB 同步数据。
 
-DolphinDBWriter 底层依赖于 DolphinDB Java API，采用批量写入的方式，将数据写入分布式数据库。
+DolphinDBWriter 底层依赖 DolphinDB Java API，采用批量写入的方式将数据写入分布式数据库。
 
 本插件通常用于以下两个场景：
 
 1. 定期从数据源向 DolphinDB 追加新增数据。
-2. 定期获取更新的数据，定位 DolphinDB 中的相同数据并更新。此种模式下，由于需要将历史数据读取出来并在内存中进行匹配，会需要大量的内存，因此这种场景适用于在 DolphinDB 中容量较小的表，通常建议数据量在200万以下的表。
+2. 定期获取更新的数据，定位 DolphinDB 中的相同数据并进行更新。此种模式下，由于需要将历史数据读取出来并在内存中进行匹配，会需要大量的内存，因此这种场景适用于在 DolphinDB 中容量较小的表，通常建议使用数据量在 200 万以下的表。
 
-当前使用的更新数据的模式是通过全表数据提取、更新后删除分区重写的方式来实现。注意，目前版本还无法保障上述整体操作的原子性，后续版本会针对此种方式的事务处理方面进行优化和改进。
+当前使用的更新数据的模式是通过全表数据提取、更新后删除分区重写的方式来实现。**注意，目前版本还无法保障上述整体操作的原子性，后续版本会针对此种方式的事务处理方面进行优化和改进。**
 
-## 3. 使用方法
+## 2. 使用方法
 
-详细信息请参阅 [DataX 指南](https://github.com/alibaba/DataX/blob/master/userGuid.md)，以下仅列出必要步骤。需要注意的是，dataX 的启动脚本是基于 python2开发，所以需要使用 python2来执行 datax.py。
+详细信息请参阅 [DataX 指南](https://github.com/alibaba/DataX/blob/master/userGuid.md)，以下仅列出必要步骤。**注意，dataX 的启动脚本基于 python2 开发，所以需要使用 python2 来执行 datax.py。**
 
-### 3.1 下载部署 DataX
+### 2.1 下载部署 DataX
 
-[DataX 下载地址](https://datax-opensource.oss-cn-hangzhou.aliyuncs.com/202210/datax.tar.gz)。
+[点击下载 DataX](https://datax-opensource.oss-cn-hangzhou.aliyuncs.com/202210/datax.tar.gz)。
 
-### 3.2 部署 DataX-DolphinDBWriter 插件
+### 2.2 部署 DataX-DolphinDBWriter 插件
 
-将源码的 `./dist/dolphindbwriter` 目录下所有内容拷贝到 `datax/plugin/writer` 目录下，即可以使用。
+将源码的 `./dist/dolphindbwriter` 目录下所有内容拷贝到 `datax/plugin/writer` 目录下，即可使用。
 
-### 3.3 执行 DataX 任务
+### 2.3 执行 DataX 任务
 
 进入 `datax/bin` 目录下，用 python 执行 `datax.py` 脚本，并指定配置文件地址，示例如下：
 
@@ -44,17 +42,17 @@ cd /root/datax/bin/
 python datax.py /root/datax/myconf/BASECODE.json
 ```
 
-### 3.4 导入实例
+### 2.4 导入实例
 
 使用 DataX 的绝大部分工作都是通过配置来完成，包括双边的数据库连接信息和需要同步的数据表结构信息等。
 
-#### 3.4.1 全量导入
+#### 2.4.1 全量导入
 
-下面以从 oracle 向 DolphinDB 导入一张表 BASECODE 来举个例子.
+下面以从 oracle 向 DolphinDB 导入一张表 BASECODE 进行示例.
 
-首先在导入之前，需要在 DolphinDB 中将目标数据库和表需要预先创建好。然后使用 oraclereader 从 oracle 读取 BASECODE 表读取全量数据，dolphindbwriter 将读取到的 BASECODE 数据写入 DolphinDB 中。
+首先在导入前，需要在 DolphinDB 中预先创建好目标数据库和表；然后使用 oraclereader 从 oracle 读取 BASECODE 表读取全量数据；再使用 dolphindbwriter 将读取到的 BASECODE 数据写入 DolphinDB 中。
 
-编写配置文件 BASECODE.json，存放到指定目录，比如 `/root/datax/myconf` 目录下，配置文件说明参考本文附录。在做全量导入时，saveFunctionName 和saveFunctionDef 这两项无需配置，删除即可。
+编写配置文件 BASECODE.json，并存放到指定目录，比如 `/root/datax/myconf` 目录下，配置文件说明参考本文附录。**注意：在做全量导入时，*saveFunctionName* 和 *saveFunctionDef* 这两项无需配置，删除即可。**
 
 配置完成后，在 `datax/bin` 目录下执行如下脚本即可启动同步任务
 
@@ -63,25 +61,25 @@ cd /root/datax/bin/
 python datax.py /root/datax/myconf/BASECODE.json
 ```
 
-#### 3.4.2 增量数据导入
+#### 2.4.2 增量数据导入
 
-增量数据分两种类型，一种是新增数据，另一种是已有数据的更新，即更新了数据内容以及时间戳。对于这两种类型，要用不同的数据导入方式。
+增量数据分两种类型，一种是新增数据，另一种是已有数据的更新，即更新了数据内容以及时间戳。对于这两种类型的数据要用不同的数据导入方式。
 
-* 新增数据增量同步
-    新增数据的增量同步，与全量导入相比，唯一的不同点在于 reader 中对数据源中已导入数据的过滤。通常需要处理增量数据的表，都会有一个时间戳的列来标记入库时间，在 oralce reader 插件中，只需要配置 where 条件，增加时间戳过滤即可，对于 dolphindbwriter 的配置与全量导入完全相同。比如时间戳字段为 OPDATE， 要增量导入2020.03.01之后的增量数据，那么配置 `"where": "OPDATE > to_date('2020-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')`。
-* 变更数据增量同步
+* **新增数据增量同步**
+    新增数据的增量同步与全量导入相比，唯一的不同点在于 reader 对数据源中已导入数据的过滤。通常需要处理增量数据的表，都会有一个时间戳的列来标记入库时间，在 oralce reader 插件中，只需要配置 where 条件，增加时间戳过滤即可，其对于 dolphindbwriter 的配置与全量导入完全相同。比如时间戳字段为 OPDATE， 要增量导入 2020.03.01 之后的增量数据，则配置 `"where": "OPDATE > to_date('2020-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')`。
+* **变更数据增量同步**
   * 变更数据在数据源有不同的记录方法，比较规范的方法是通过一个变更标志和时间戳来记录，比如用 OPTYPE、 OPDATE 来记录变更的类型和时间戳，这样可以通过类似 `"where": "OPTYPE=1 and OPDATE > to_date('2020-03-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')` 条件过滤出增量数据。
     对于 writer 的配置项，需要增加如下两处配置:
     * isKeyField
     因为变更数据的更新需要目标表中有唯一列，所以 writer 的配置中，需要对 table 配置项中唯一键列增加 `isKeyField=true` 这一配置项。
     * saveFunctionName
-    DolphinDB 有多种数据存储的方式，比较常用的两种是分布式表和维度表。dolphindbwriter 中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在 writer 配置中增加`saveFunctionName`和`saveFunctionDef`两个配置(具体用法请参考附录)，writer 会根据这两个配置项，采用对应的方式将数据更新到 DolphinDB 中。  
-    在1.30.21.4版本中，用户可通过`saveFunctionName`和`saveFunctionDef`引入 DolphinDB 的[`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能以保证导入后的数据唯一性。具体配置示例参考附录。
+    DolphinDB 有多种数据存储的方式，比较常用的两种是分布式表和维度表。dolphindbwriter 中内置了更新这两种表的脚本模板，当从数据源中过滤出变更数据之后，在 writer 配置中增加 `saveFunctionName` 和 `saveFunctionDef` 两个配置(具体用法请参考附录)，writer 会根据这两个配置项，采用对应的方式将数据更新到 DolphinDB 中。  
+    在 1.30.21.4 版本中，用户可通过 `saveFunctionName` 和 `saveFunctionDef` 引入 DolphinDB 的[upsert!](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html)功能以保证导入后的数据唯一性。具体配置示例参考附录。
   * 当有些数据源中不包含 OPTYPE 这一标识列，无法分辨出新数据是更新或是新增的时候，可以作为新增数据入库，以函数视图输出的方式：
     * 数据作为新增数据处理。这种方式处理后，数据表中存在重复键值。
     * 定义 functionView 作为数据访问接口，在 functionView 中对有重复键值的数据仅输出时间戳最新的一条。
     * 用户不能直接访问表(可以取消非管理员用户访问表的权限)，统一通过 functionView 访问数据。
-* 定时同步
+* **定时同步**
   * 利用 shell 脚本实现 DataX 定时增量数据同步
     DataX 从设计上用于离线数据的一次性同步场景，我们可以通过 shell 或 python 脚本等工程方式实现定时增量同步。由于 DataX 支持非常灵活的配置， 一种相对简单并且可靠的思路就是根据时间戳动态修改配置文件：
     1. 利用 DataX 的 reader 去目标数据库读取数据，并记录最新时间戳；
@@ -112,16 +110,17 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
 
 调试好配置文件之后，将此脚本通过 cron 加入到定时任务中，即可实现每日定期增量备份的功能。
 
-#### 3.4.3 数据导入预处理
+#### 2.4.3 数据导入预处理
 
 在数据进入 DolphinDB 分布式库之前，某些场景下需要对数据做一些预处理，比如数据格式转换，参照值转换等。这一功能可以通过自定义 `saveFunctionDef` 来实现，在数据上传到 DolphinDB 内存中，若 `saveFunctionDef` 有定义，插件会用此函数来替换 tableInsert 函数，将数据处理逻辑插入数据写入之前即可实现上述的功能。
 此函数定义必须有三个参数： *dbPath*, *tbName*, *data*，分别对应数据库路径(如 `dfs://db1`)，数据表名称，待写入的数据。
 
 ## 附录
 
-* 更新分区表和维度表脚本模板代码(供参考)
+* **更新分区表和维度表脚本模板代码（供参考）**
 
   * savePartitionedData
+  
     ```
     def rowUpdate(dbName, tbName, data, t){
     	updateRowCount = exec count(*) from ej(t,data,['OBJECT_ID'])
@@ -144,6 +143,7 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
     ```
 
   * saveDimensionData
+
     ```
     def saveDimensionData(dbName, tbName, data){
             login('admin','123456')
@@ -158,10 +158,7 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
 
 * 配置文件示例
 
- 目前1.30.21.4版本的 dolphindbwriter 已支持根据 table 名称获取 schema。以下仍展示完整代码：
-
- BASECODE.json
-
+BASECODE.json
 ```json
 {
     "job": {
@@ -262,6 +259,7 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
 ```
 
 * 配置文件参数说明
+
   * **host**
     * 描述：Server Host。
     * 必选：是。
@@ -272,12 +270,12 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
     * 必选：是。
     * 默认值：无。
 
-  * **userId**
+  * **username/userId**
     * 描述：DolphinDB 用户名。导入分布式库时，必须要有权限的用户才能操作，否则会返回。
     * 必选：是。
     * 默认值：无。
 
-  * **pwd**
+  * **password/pwd**
     * 描述：DolphinDB 用户密码。
     * 必选：是。
     * 默认值：无。
@@ -286,6 +284,26 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
     * 描述：需要写入的目标分布式库名称，比如 "dfs://MYDB"。
     * 必选：是。
     * 默认值：无。
+
+  * **preSql**
+  	* 描述：写入数据到目的表前，会先执行这里的 DolphinDB 脚本。
+  	* 必选：否。
+    * 默认值：无。
+
+  * **postSql**
+  	* 描述：写入数据到目的表后，会执行这里的 DolphinDB 脚本。
+  	* 必选：否。
+  	* 默认值：无。
+
+  * **column**
+  	* 描述：目的表需要写入数据的字段。注意：不能与 table  字段同时使用。
+  	* 必选：否。
+  	* 默认值：无。
+  	* 使用说明：
+  		* 字段之间用英文逗号分隔，例如: "column": ["id","name","age"]。
+  		* 如果要依次写入全部列，使用表示，例如: "column": ["*"]。
+  		* 不可以为空 “column": []，或者”column": [““]。
+  		* 导入数据是按照原表的字段顺序，无法通过识别新表的字段名称而改变数据顺序。
 
   * **tableName**
     * 描述: 目标数据表名称。
@@ -304,8 +322,8 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
       * type：枚举值以及对应 DataX 数据类型如下表。DolphinDB 的数据类型及精度请参考[数据类型](https://www.dolphindb.cn/cn/help/DataTypesandStructures/DataTypes/index.html)。
 
     |  DolphinDB 类型 |  配置值 |  DataX 类型|
-	|:-------------|:--------|:-----------|
-	|DOUBLE | DT_DOUBLE | DOUBLE|
+	  |:-------------|:--------|:-----------|
+  	|DOUBLE | DT_DOUBLE | DOUBLE|
     |FLOAT|DT_FLOAT|DOUBLE|
     |BOOL|DT_BOOL|BOOLEAN|
     |DATE|DT_DATE|DATE|
