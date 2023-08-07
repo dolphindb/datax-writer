@@ -361,3 +361,15 @@ BASECODE.json
     "saveFunctionName":"upsertTable",
     "saveFunctionDef":"ignoreNull=true;keyColNames=`id;sortColumns=`value"
     ```
+
+# ReleaseNotes:
+
+## 新功能
+
+* 新增配置参数 *preSql*，支持在插入数据前预执行一段脚本。（**1.30.21.5**）
+* 新增配置参数 *postSql*，支持在插入数据后预执行一段脚本。（**1.30.21.5**）
+* 新增配置参数 *userName*，指定 DolphinDB 的用户名，与原有参数 *userId* 兼容。（**1.30.21.5**）
+* 新增配置参数 *passWord*，指定 DolphinDB 用户名的对应密码，与原有参数 *pwd* 兼容。（**1.30.21.5**）
+## 故障修复
+
+* 故障修复：修复当连接出现异常时，未抛出正确报错信息的问题。（**1.30.21.5**）
