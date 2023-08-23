@@ -5,11 +5,25 @@
       <artifact name="dolphindbwriter" />
     </artifacts-to-build>
   </component>
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="92cb4fc0-7fd8-410d-b64b-ca6148f094bd" name="Default" comment="" />
-    <ignored path="$PROJECT_DIR$/out/" />
-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
-    <option name="TRACKING_ENABLED" value="true" />
+    <list default="true" id="92cb4fc0-7fd8-410d-b64b-ca6148f094bd" name="Default" comment="">
+      <change afterPath="$PROJECT_DIR$/../datax-writer.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbTemplate.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbTemplate.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Job.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Job.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Task.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Task.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/Key.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/Key.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/main.iml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/main.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/test/com/alibaba/datax/plugin/writer/DolphinDbTemplateTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/test/com/alibaba/datax/plugin/writer/DolphinDbTemplateTest.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -102,6 +116,9 @@
       <find>begin</find>
     </findStrings>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
@@ -113,12 +130,17 @@
       </list>
     </option>
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 0
+}</component>
   <component name="ProjectFrameBounds" extendedState="7">
     <option name="x" value="-1927" />
     <option name="y" value="-245" />
     <option name="width" value="1932" />
     <option name="height" value="1047" />
   </component>
+  <component name="ProjectId" id="2TgV5CQgKLRYrKNoAtiIvUv4x20" />
   <component name="ProjectView">
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
@@ -156,67 +178,73 @@
       </pane>
     </panes>
   </component>
-  <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/libs/api-java-1.0.16.jar!/" />
-    <property name="project.structure.last.edited" value="Artifacts" />
-    <property name="project.structure.proportion" value="0.15" />
-    <property name="project.structure.side.proportion" value="0.2" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
   </component>
-  <component name="RunDashboard">
-    <option name="ruleStates">
-      <list>
-        <RuleState>
-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
-        </RuleState>
-        <RuleState>
-          <option name="name" value="StatusDashboardGroupingRule" />
-        </RuleState>
-      </list>
-    </option>
-  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;release130.22.2&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/yhlu/Documents/project/datax-writer/dolphindbwriter/libs/commons-lang3-3.12.0.jar&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Libraries&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
   <component name="RunManager">
+    <configuration name="DolphinDbTemplateTest" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.alibaba.datax.plugin.writer.DolphinDbTemplateTest" />
+      <module name="main" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.alibaba.datax.plugin.writer.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration default="true" type="Application" factoryName="Application">
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
     <configuration default="true" type="JUnit" factoryName="JUnit">
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="PACKAGE_NAME" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="METHOD_NAME" />
       <option name="TEST_OBJECT" value="class" />
-      <option name="VM_PARAMETERS" value="-ea" />
-      <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="%MODULE_WORKING_DIR%" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <option name="TEST_SEARCH_SCOPE">
-        <value defaultName="singleModule" />
-      </option>
-      <patterns />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
-    <configuration default="true" type="TestNG" factoryName="TestNG">
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="SUITE_NAME" />
-      <option name="PACKAGE_NAME" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="METHOD_NAME" />
-      <option name="GROUP_NAME" />
+    <configuration default="true" type="TestNG">
       <option name="TEST_OBJECT" value="CLASS" />
-      <option name="VM_PARAMETERS" value="-ea" />
-      <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="%MODULE_WORKING_DIR%" />
-      <option name="OUTPUT_DIRECTORY" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <option name="TEST_SEARCH_SCOPE">
-        <value defaultName="singleModule" />
-      </option>
-      <option name="USE_DEFAULT_REPORTERS" value="false" />
-      <option name="PROPERTIES_FILE" />
       <properties />
       <listeners />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.DolphinDbTemplateTest" />
+      </list>
+    </recent_temporary>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -227,6 +255,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1582705238564</updated>
+      <workItem from="1691464527577" duration="8517000" />
+      <workItem from="1691488372602" duration="435000" />
+      <workItem from="1691546537177" duration="71000" />
+      <workItem from="1691551598383" duration="706000" />
+      <workItem from="1691559408838" duration="1442000" />
+      <workItem from="1691560887583" duration="952000" />
     </task>
     <servers />
   </component>
@@ -262,8 +296,19 @@
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
     </layout>
   </component>
-  <component name="VcsContentAnnotationSettings">
-    <option name="myLimit" value="2678400000" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.java">

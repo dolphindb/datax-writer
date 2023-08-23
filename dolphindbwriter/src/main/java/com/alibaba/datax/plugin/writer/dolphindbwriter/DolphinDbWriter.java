@@ -32,7 +32,7 @@ public class DolphinDbWriter extends Writer {
 
     public static class Job extends Writer.Job {
 
-        public static final String VERSION = "1.30.22.3";
+        public static final String VERSION = "1.30.22.1";
 
         private static final Logger LOG = LoggerFactory.getLogger(Job.class);
 
@@ -112,7 +112,7 @@ public class DolphinDbWriter extends Writer {
             Record record = null;
             Integer batchSize = this.writerConfig.getInt(Key.BATCH_SIZE);
             if(batchSize==null){
-                batchSize = 10000000;
+                batchSize = 100000;
             }
 
             if (!this.preSql.isEmpty()) {
@@ -129,7 +129,7 @@ public class DolphinDbWriter extends Writer {
         }
 
         private void insertToDolphinDB(BasicTable bt) {
-            LOG.info("begin to write BasicTable rows = " + String.valueOf(bt.rows()));
+            LOG.info("begin to write BasicTable rows = " + bt.rows());
             if (bt.rows() == 0) {
                 return;
             }
@@ -144,18 +144,18 @@ public class DolphinDbWriter extends Writer {
         }
 
         private void executePreSql(String preSql) {
-            LOG.info("execute preSql: " + this.preSql + " before insertToDolphinDB.");
+            LOG.info("execute preSql: " + preSql + " before insertToDolphinDB.");
             try {
-                dbConnection.run(this.preSql);
+                dbConnection.run(preSql);
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             }
         }
 
         private void executePostSql(String postSql) {
-            LOG.info("execute postSql: " + this.postSql + " after insertToDolphinDB.");
+            LOG.info("execute postSql: " + postSql + " after insertToDolphinDB.");
             try {
-                dbConnection.run(this.postSql);
+                dbConnection.run(postSql);
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             }
@@ -270,7 +270,7 @@ public class DolphinDbWriter extends Writer {
                         colData.add(Float.parseFloat(column.asString()));
                         break;
                     case DT_BOOL:
-                        colData.add(column.asBoolean() == true ? (byte) 1 : (byte) 0);
+                        colData.add(column.asBoolean() ? (byte) 1 : (byte) 0);
                         break;
                     case DT_DATE:
                         colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
@@ -389,7 +389,7 @@ public class DolphinDbWriter extends Writer {
             List<Vector> columns = new ArrayList<>();
             List<String> columnNames = new ArrayList<>();
             for (int i = 0; i < colNames_.size(); i++){
-                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i), extras_.get(i)));
+                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i), extras_.get(i),i));
                 columnNames.add(colNames_.get(i));
             }
             for (int i = 0; i < colNames_.size(); i++) {
@@ -398,7 +398,7 @@ public class DolphinDbWriter extends Writer {
             return new BasicTable(columnNames, columns);
         }
 
-        private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType, int extra) {
+        private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType, int extra,int column) {
             Vector vec = null;
             switch (targetType) {
                 case DT_DOUBLE:
@@ -448,10 +448,26 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_STRING:
                 case DT_SYMBOL:
-                    vec = new BasicStringVector(colData);
+                    List<String> stringList = new ArrayList<>();
+                    for (int i = 0; i < colData.size() ; i++) {
+                        byte[] bytes = ((String) colData.get(i)).getBytes();
+                        if (bytes.length > 65535) {
+                            stringList.add(((String) colData.get(i)).substring(0, 21845));
+                            LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                        }
+                    }
+                    vec = new BasicStringVector(stringList);
                     break;
                 case DT_BLOB:
-                    vec = new BasicStringVector(colData, true);
+                    List<String> bolbList = new ArrayList<>();
+                    for (int i = 0; i < colData.size() ; i++) {
+                        byte[] bytes = ((String) colData.get(i)).getBytes();
+                        if (bytes.length > 4194304) {
+                            bolbList.add(((String) colData.get(i)).substring(0, 1398101));
+                            LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                        }
+                    }
+                    vec = new BasicStringVector(bolbList);
                     break;
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
@@ -531,7 +547,7 @@ public class DolphinDbWriter extends Writer {
             if (fieldArr.toString().equals("[]")){
                 try {
                     BasicDictionary schema;
-                    if (this.dbName == null || dbName.equals("")){
+                    if (this.dbName == null || dbName.isEmpty()){
                         schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
                     }else {
                         schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
@@ -576,7 +592,7 @@ public class DolphinDbWriter extends Writer {
             if (fieldArr.toString().equals("[\"*\"]")){
                 try {
                     BasicDictionary schema;
-                    if (this.dbName == null || dbName.equals("")){
+                    if (this.dbName == null || dbName.isEmpty()){
                         schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
                     }else {
                         schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
@@ -601,7 +617,7 @@ public class DolphinDbWriter extends Writer {
                 this.useColumnsParamNotEmpty = true;
                 try {
                     BasicDictionary schema;
-                    if (this.dbName == null || dbName.equals("")) {
+                    if (this.dbName == null || dbName.isEmpty()) {
                         schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
                     } else {
                         schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
@@ -614,16 +630,15 @@ public class DolphinDbWriter extends Writer {
                     //get read colname list, check colname whether have same
                     HashSet<String> readColNamesSet = new HashSet<>();
                     List<String> readColNames = new ArrayList<>();
-                    for (int i = 0; i < fieldArr.size(); i++){
-                        Object field = fieldArr.get(i);
+                    for (Object field : fieldArr) {
                         String colName = field.toString();
-                        if(readColNamesSet.contains(colName))
+                        if (readColNamesSet.contains(colName))
                             throw new Exception("colName can be same in columns parameter. ");
                         readColNamesSet.add(colName);
                         readColNames.add(colName);
                     }
 
-                    //create map(writeColName, writeColumnIndx)
+                    // create map(writeColName, writeColumnIndx)
                     HashMap<String, Integer> writeColNamesIndex = new HashMap<String, Integer>();
                     for (int i = 0; i < writerColNames.rows(); i++){
                         String colName = writerColNames.getString(i);
@@ -632,9 +647,9 @@ public class DolphinDbWriter extends Writer {
                         writeColNamesIndex.put(colName, i);
                     }
 
-                    //create map(writeColumnIndex, readColumnIndex)
-                    //the size of param columns must be not less than the columns of table to write
-                    //the size of param columns must be equal to size of reader columns, check when recordToBasicTable
+                    // create map(writeColumnIndex, readColumnIndex)
+                    // the size of param columns must be not less than the columns of table to write
+                    // the size of param columns must be equal to size of reader columns, check when recordToBasicTable
                     for(int i = 0; i < readColNames.size(); ++i){
                         if(!writeColNamesIndex.containsKey(readColNames.get(i)))
                             throw new Exception("The " + readColNames.get(i) + " column in columns parameter does not exist in table to write");
@@ -663,13 +678,13 @@ public class DolphinDbWriter extends Writer {
             this.writerConfig = super.getPluginJobConf();
             String host = this.writerConfig.getString(Key.HOST);
             int port = this.writerConfig.getInt(Key.PORT);
-            String userid = new String();
+            String userid = "";
             String configUserId = this.writerConfig.getString(Key.USER_ID);
             String configUsername = this.writerConfig.getString(Key.USERNAME);
             if (StringUtils.isNotEmpty(configUsername) || StringUtils.isNotEmpty(configUserId)) {
                 userid = StringUtils.isNotEmpty(configUsername) ? configUsername : configUserId;
             }
-            String pwd = new String();
+            String pwd = "";
             String configPwd = this.writerConfig.getString(Key.PWD);
             String configPassword = this.writerConfig.getString(Key.PASSWORD);
             if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd)) {
@@ -690,8 +705,7 @@ public class DolphinDbWriter extends Writer {
             if (CollectionUtils.isNotEmpty(preSqlList)) {
                 JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
                 List<String> joinPreSqlList = new ArrayList<>();
-                for (int i = 0; i < preSqlArr.size(); i++) {
-                    Object field = preSqlArr.get(i);
+                for (Object field : preSqlArr) {
                     joinPreSqlList.add(field.toString());
                 }
                 this.preSql = StringUtils.join(joinPreSqlList, ";");
@@ -702,8 +716,7 @@ public class DolphinDbWriter extends Writer {
             if (CollectionUtils.isNotEmpty(postSqlList)) {
                 JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
                 List<String> joinPostSqlList = new ArrayList<>();
-                for (int i = 0; i < postSqlArr.size(); i++) {
-                    Object field = postSqlArr.get(i);
+                for (Object field : postSqlArr) {
                     joinPostSqlList.add(field.toString());
                 }
                 this.postSql = StringUtils.join(joinPostSqlList, ";");
@@ -715,18 +728,18 @@ public class DolphinDbWriter extends Writer {
 
             this.dbName = dbName;
             this.tbName = tbName;
-            if(this.dbName == null || this.dbName.equals("")){
+            if(this.dbName == null || this.dbName.isEmpty()){
                 this.functionSql = String.format("tableInsert{%s}", tbName);
             }else {
                 this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
-                if (saveFunctionName != null && !saveFunctionName.equals("")) {
+                if (saveFunctionName != null && !saveFunctionName.isEmpty()) {
                     if (saveFunctionName.equals("upsertTable")){
                         if (saveFunctionDef.contains("keyColNames")){
                             String upsertParameter = saveFunctionDef;
                             saveFunctionDef = DolphinDbTemplate.getTableUpsertScript(userid, pwd, upsertParameter);
                         }
                     }
-                    if (saveFunctionDef == null || saveFunctionDef.equals("")) {
+                    if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
                         switch (saveFunctionName) {
                             case "savePartitionedData":
                                 saveFunctionDef = DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
@@ -741,7 +754,7 @@ public class DolphinDbWriter extends Writer {
             }
             dbConnection = new DBConnection();
             try {
-                if (saveFunctionDef == null || saveFunctionDef.equals("")) {
+                if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
                     dbConnection.connect(host, port, userid, pwd);
                 } else {
                     LOG.info(saveFunctionDef);
