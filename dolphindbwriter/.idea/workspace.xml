@@ -9,20 +9,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="92cb4fc0-7fd8-410d-b64b-ca6148f094bd" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/../datax-writer.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="92cb4fc0-7fd8-410d-b64b-ca6148f094bd" name="Default" comment="JAVAOS-101、JAVAOS-9：cut oversized String and blob,decrease batch size">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbTemplate.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbTemplate.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$1.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Job.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Job.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Task.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter$Task.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/Key.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/main/com/alibaba/datax/plugin/writer/dolphindbwriter/Key.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/main.iml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/main.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/test/com/alibaba/datax/plugin/writer/DolphinDbTemplateTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/test/com/alibaba/datax/plugin/writer/DolphinDbTemplateTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -261,7 +249,17 @@
       <workItem from="1691551598383" duration="706000" />
       <workItem from="1691559408838" duration="1442000" />
       <workItem from="1691560887583" duration="952000" />
+      <workItem from="1692762868522" duration="754000" />
     </task>
+    <task id="LOCAL-00001" summary="JAVAOS-101、JAVAOS-9：cut oversized String and blob,decrease batch size">
+      <option name="closed" value="true" />
+      <created>1692763008904</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1692763008904</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -309,6 +307,10 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="JAVAOS-101、JAVAOS-9：cut oversized String and blob,decrease batch size" />
+    <option name="LAST_COMMIT_MESSAGE" value="JAVAOS-101、JAVAOS-9：cut oversized String and blob,decrease batch size" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/src/main/java/com/alibaba/datax/plugin/writer/dolphindbwriter/DolphinDbWriterErrorCode.java">
