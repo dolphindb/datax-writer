@@ -454,6 +454,8 @@ public class DolphinDbWriter extends Writer {
                         if (bytes.length > 65535) {
                             stringList.add(((String) colData.get(i)).substring(0, 21845));
                             LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                        } else {
+                            stringList.add((String) colData.get(i));
                         }
                     }
                     vec = new BasicStringVector(stringList);
@@ -465,9 +467,11 @@ public class DolphinDbWriter extends Writer {
                         if (bytes.length > 4194304) {
                             bolbList.add(((String) colData.get(i)).substring(0, 1398101));
                             LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                        } else {
+                            bolbList.add((String) colData.get(i));
                         }
                     }
-                    vec = new BasicStringVector(bolbList);
+                    vec = new BasicStringVector(bolbList,true);
                     break;
                 case DT_BYTE:
                     vec = new BasicByteVector(colData);
