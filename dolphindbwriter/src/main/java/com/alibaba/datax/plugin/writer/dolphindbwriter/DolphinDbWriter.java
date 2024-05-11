@@ -574,13 +574,28 @@ public class DolphinDbWriter extends Writer {
                 }
             } else {
                 for (int i = 0; i < fieldArr.size(); i++) {
-                    JSONObject field = fieldArr.getJSONObject(i);
-                    String colName = field.getString("name");
-                    Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
-                    List colData = getListFromColumn(type);
-                    this.colNames_.add(colName);
-                    this.colDatas_.add(colData);
-                    this.colTypes_.add(type);
+                    try {
+                        JSONObject field = fieldArr.getJSONObject(i);
+                        String colName = field.getString("name");
+                        Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(field.getString("type"));
+
+                        BasicDictionary schema;
+                        if (this.dbName == null || dbName.isEmpty()){
+                            schema = (BasicDictionary) dbConnection.run(tbName + ".schema()");
+                        }else {
+                            schema = (BasicDictionary) dbConnection.run("loadTable(\"" + dbName + "\"" + ",`" + tbName + ").schema()");
+                        }
+                        BasicTable colDefs = (BasicTable)schema.get(new BasicString("colDefs"));
+                        BasicIntVector extraInt = (BasicIntVector) colDefs.getColumn("extra");
+
+                        List colData = getListFromColumn(type);
+                        this.colNames_.add(colName);
+                        this.colDatas_.add(colData);
+                        this.colTypes_.add(type);
+                        this.extras_.add(extraInt.getInt(i));
+                    } catch (Exception e) {
+                        LOG.error(e.getMessage(), e);
+                    }
                 }
             }
         }
