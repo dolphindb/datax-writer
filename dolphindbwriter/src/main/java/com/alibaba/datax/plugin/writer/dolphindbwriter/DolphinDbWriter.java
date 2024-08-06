@@ -1,8 +1,7 @@
 /**
- * Impelement of job and task
+ * Impelement of DolphinDbWriter job and task.
  *
  * @author DolphinDB
- * @author Apple
  */
 package com.alibaba.datax.plugin.writer.dolphindbwriter;
 
@@ -30,7 +29,7 @@ import java.util.*;
 
 public class DolphinDbWriter extends Writer {
 
-    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.1";
+    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.2";
 
     public static class Job extends Writer.Job {
 
@@ -51,7 +50,7 @@ public class DolphinDbWriter extends Writer {
         public void init() {
             this.writerConfig = this.getPluginJobConf();
             this.validateParameter();
-            LOG.info("dolphindbwriter params:{}", this.writerConfig.toJSON());
+            LOG.info("Dolphindb Writer config params:{}", this.writerConfig.toJSON());
         }
 
         @Override
@@ -104,43 +103,159 @@ public class DolphinDbWriter extends Writer {
 
         private static final BigDecimal DECIMAL128_MIN_VALUE = new BigDecimal("-170141183460469231731687303715884105728");
 
+        @Override
+        public void init() {
+            this.writerConfig = super.getPluginJobConf();
+            String host = this.writerConfig.getString(Key.HOST);
+            int port = this.writerConfig.getInt(Key.PORT);
+            String userid = "";
+            String configUserId = this.writerConfig.getString(Key.USER_ID);
+            String configUsername = this.writerConfig.getString(Key.USERNAME);
+            if (StringUtils.isNotEmpty(configUsername) || StringUtils.isNotEmpty(configUserId))
+                userid = StringUtils.isNotEmpty(configUsername) ? configUsername : configUserId;
+
+            String pwd = "";
+            String configPwd = this.writerConfig.getString(Key.PWD);
+            String configPassword = this.writerConfig.getString(Key.PASSWORD);
+            if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd))
+                pwd = StringUtils.isNotEmpty(configPassword) ? configPassword : configPwd;
+
+            String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
+            String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
+
+            // table:
+            List<Object> tableField = this.writerConfig.getList(Key.TABLE);
+            JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
+            String dbName = this.writerConfig.getString(Key.DB_PATH);
+            String tbName = this.writerConfig.getString(Key.TABLE_NAME);
+
+            // preSql:
+            List<Object> preSqlList = this.writerConfig.getList(Key.PRE_SQL);
+            if (CollectionUtils.isNotEmpty(preSqlList)) {
+                JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
+                List<String> joinPreSqlList = new ArrayList<>();
+                for (Object field : preSqlArr) {
+                    joinPreSqlList.add(field.toString());
+                }
+                this.preSql = StringUtils.join(joinPreSqlList, ";");
+            }
+
+            // postSql:
+            List<Object> postSqlList = this.writerConfig.getList(Key.POST_SQL);
+            if (CollectionUtils.isNotEmpty(postSqlList)) {
+                JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
+                List<String> joinPostSqlList = new ArrayList<>();
+                for (Object field : postSqlArr) {
+                    joinPostSqlList.add(field.toString());
+                }
+                this.postSql = StringUtils.join(joinPostSqlList, ";");
+            }
+
+            // column:
+            List<Object> columList = this.writerConfig.getList(Key.COLUMN);
+            JSONArray columnArr = JSONArray.parseArray(JSON.toJSONString(columList));
+
+            this.dbName = dbName;
+            this.tbName = tbName;
+            if (this.dbName == null || this.dbName.isEmpty()) {
+                this.functionSql = String.format("tableInsert{%s}", tbName);
+            } else {
+                this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
+                if (saveFunctionName != null && !saveFunctionName.isEmpty()) {
+                    if (saveFunctionName.equals("upsertTable")){
+                        if (saveFunctionDef.contains("keyColNames")){
+                            String upsertParameter = saveFunctionDef;
+                            saveFunctionDef = DolphinDbTemplate.getTableUpsertScript(userid, pwd, upsertParameter);
+                        }
+                    }
+                    if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
+                        saveFunctionDef = switch (saveFunctionName) {
+                            case "savePartitionedData" ->
+                                    DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
+                            case "saveDimensionData" ->
+                                    DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
+                            default -> saveFunctionDef;
+                        };
+                    }
+                    this.functionSql = String.format("%s{'%s','%s'}", saveFunctionName, dbName, tbName);
+                }
+            }
+
+            dbConnection = new DBConnection();
+            try {
+                if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
+                    dbConnection.connect(host, port, userid, pwd);
+                } else {
+                    LOG.info(saveFunctionDef);
+                    dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
+                }
+
+                if (columnArr != null) {
+                    initColumn(columnArr);
+                } else if (fieldArr != null) {
+                    initTable(fieldArr);
+                }
+            } catch (IOException e) {
+                LOG.info(saveFunctionDef);
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        }
 
         @Override
         public void startWrite(RecordReceiver lineReceiver) {
-
-            LOG.info("start to writer DolphinDB");
+            LOG.info("Start write to DolphinDB.");
             Record record = null;
             Integer batchSize = this.writerConfig.getInt(Key.BATCH_SIZE);
-            if(batchSize==null){
+            if (Objects.isNull(batchSize))
                 batchSize = 100000;
-            }
 
-            if (!this.preSql.isEmpty()) {
+            if (!this.preSql.isEmpty())
                 executePreSql(this.preSql);
-            }
 
             while ((record = lineReceiver.getFromReader()) != null) {
-                recordToBasicTable(record);
+                parseRecordData(record);
                 List firstColumn = colDatas_.get(0);
                 if (firstColumn.size() >= batchSize) {
-                    insertToDolphinDB(createUploadTable());
+                    BasicTable table = createUploadTable();
+                    insertToDolphinDB(table);
                 }
+            }
+
+            LOG.info("End write to DolphinDB.");
+        }
+
+        @Override
+        public void post() {
+            LOG.info("post() is invoked.");
+            insertToDolphinDB(createUploadTable());
+
+            if (!this.postSql.isEmpty())
+                executePostSql(this.postSql);
+        }
+
+        @Override
+        public void destroy() {
+            if (dbConnection != null) {
+                LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Close DBConnection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                dbConnection.close();
             }
         }
 
         private void insertToDolphinDB(BasicTable bt) {
-            LOG.info("begin to write BasicTable rows = " + bt.rows());
-            if (bt.rows() == 0) {
+            LOG.info("Start inserting a table with " + bt.rows() + " rows to DolphinDB.");
+            if (bt.rows() == 0)
                 return;
-            }
-            List<Entity> args = new ArrayList<>();
-            args.add(bt);
+
             try {
+                List<Entity> args = new ArrayList<>();
+                args.add(bt);
                 dbConnection.run(this.functionSql, args);
             } catch (IOException ex) {
-                LOG.error(ex.getMessage(), ex);
+                LOG.error("Failed to insert the table with error: " + ex.getMessage());
                 throw new RuntimeException(ex.getMessage(), ex);
             }
+
+            LOG.info("End inserting a table to DolphinDB.");
         }
 
         private void executePreSql(String preSql) {
@@ -161,7 +276,7 @@ public class DolphinDbWriter extends Writer {
             }
         }
 
-        private void recordToBasicTable(Record record) throws RuntimeException {
+        private void parseRecordData(Record record) throws RuntimeException {
             int recordLength = record.getColumnNumber();
             Column column;
             if(useColumnsParamNotEmpty && writeToReadIndexMap.size() != recordLength)
@@ -170,17 +285,16 @@ public class DolphinDbWriter extends Writer {
                 throw new RuntimeException("The columns size of reader isn't equal to the columns size of table to write. ");
             for (int i = 0; i < colDatas_.size(); i++) {
                 int readIndex = i;
-                if(useColumnsParamNotEmpty){
-                    if(!writeToReadIndexMap.containsKey(i)){
+                if (useColumnsParamNotEmpty) {
+                    if (!writeToReadIndexMap.containsKey(i)) {
                         setNullData(i);
                         continue;
-                    }
-                    else{
+                    } else {
                         readIndex = writeToReadIndexMap.get(i);
                     }
                 }
                 column = record.getColumn(readIndex);
-                if(column.getRawData() == null)
+                if (column.getRawData() == null)
                     setNullData(i);
                 else
                     setData(i, column);
@@ -190,71 +304,75 @@ public class DolphinDbWriter extends Writer {
         private void setNullData(int index){
             List colData = colDatas_.get(index);
             Entity.DATA_TYPE targetType = colTypes_.get(index);
-            switch (targetType) {
-                case DT_DOUBLE:
-                    colData.add(-Double.MAX_VALUE);
-                    break;
-                case DT_FLOAT:
-                    colData.add(-Float.MAX_VALUE);
-                    break;
-                case DT_BOOL:
-                    colData.add((byte) -128);
-                    break;
-                case DT_DATE:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_MONTH:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_DATETIME:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_TIME:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_SECOND:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_TIMESTAMP:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_NANOTIME:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_NANOTIMESTAMP:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_LONG:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_INT:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_UUID:
-                    colData.add(new Long2(0, 0));
-                    break;
-                case DT_SHORT:
-                    colData.add(Short.MIN_VALUE);
-                    break;
-                case DT_STRING:
-                case DT_SYMBOL:
-                case DT_BLOB:
-                    colData.add("");
-                    break;
-                case DT_BYTE:
-                    colData.add((byte) -128);
-                    break;
-                case DT_DECIMAL32:
-                    colData.add(Integer.MIN_VALUE);
-                    break;
-                case DT_DECIMAL64:
-                    colData.add(Long.MIN_VALUE);
-                    break;
-                case DT_DECIMAL128:
-                    colData.add(DECIMAL128_MIN_VALUE);
-                    break;
-                default:
-                    throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
+            try {
+                switch (targetType) {
+                    case DT_DOUBLE:
+                        colData.add(-Double.MAX_VALUE);
+                        break;
+                    case DT_FLOAT:
+                        colData.add(-Float.MAX_VALUE);
+                        break;
+                    case DT_BOOL:
+                        colData.add((byte) -128);
+                        break;
+                    case DT_DATE:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_MONTH:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_DATETIME:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_TIME:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_SECOND:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_TIMESTAMP:
+                        colData.add(Long.MIN_VALUE);
+                        break;
+                    case DT_NANOTIME:
+                        colData.add(Long.MIN_VALUE);
+                        break;
+                    case DT_NANOTIMESTAMP:
+                        colData.add(Long.MIN_VALUE);
+                        break;
+                    case DT_LONG:
+                        colData.add(Long.MIN_VALUE);
+                        break;
+                    case DT_INT:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_UUID:
+                        colData.add(new Long2(0, 0));
+                        break;
+                    case DT_SHORT:
+                        colData.add(Short.MIN_VALUE);
+                        break;
+                    case DT_STRING:
+                    case DT_SYMBOL:
+                    case DT_BLOB:
+                        colData.add("");
+                        break;
+                    case DT_BYTE:
+                        colData.add((byte) -128);
+                        break;
+                    case DT_DECIMAL32:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_DECIMAL64:
+                        colData.add(Long.MIN_VALUE);
+                        break;
+                    case DT_DECIMAL128:
+                        colData.add(DECIMAL128_MIN_VALUE);
+                        break;
+                    default:
+                        throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to set NULL to column '" + colNames_.get(index) + "'.");
             }
         }
 
@@ -329,8 +447,8 @@ public class DolphinDbWriter extends Writer {
                     default:
                         throw new RuntimeException(Utils.getDataTypeString(targetType) + "is not supported. ");
                 }
-            }catch (Exception ex){
-                LOG.info("Parse error : colName=" + colNames_.get(index));
+            } catch (Exception ex){
+                LOG.error("Failed to parse the column '" + colNames_.get(index) + "': " + column.toString() + ".");
                 throw ex;
             }
         }
@@ -389,157 +507,164 @@ public class DolphinDbWriter extends Writer {
             List<Vector> columns = new ArrayList<>();
             List<String> columnNames = new ArrayList<>();
             for (int i = 0; i < colNames_.size(); i++){
-                columns.add(getDDBColFromColumn(colDatas_.get(i), colTypes_.get(i), extras_.get(i),i));
+                Vector vec = generateDDBTableColumn(colDatas_.get(i), colTypes_.get(i), extras_.get(i), i);
+                columns.add(vec);
                 columnNames.add(colNames_.get(i));
             }
-            for (int i = 0; i < colNames_.size(); i++) {
+
+            for (int i = 0; i < colNames_.size(); i++)
                 colDatas_.get(i).clear();
-            }
+
             return new BasicTable(columnNames, columns);
         }
 
-        private Vector getDDBColFromColumn(List colData, Entity.DATA_TYPE targetType, int extra,int column) {
+        private Vector generateDDBTableColumn(List colData, Entity.DATA_TYPE targetType, int extra, int column) {
             Vector vec = null;
-            switch (targetType) {
-                case DT_DOUBLE:
-                    vec = new BasicDoubleVector(colData);
-                    break;
-                case DT_FLOAT:
-                    vec = new BasicFloatVector(colData);
-                    break;
-                case DT_BOOL:
-                    vec = new BasicBooleanVector(colData);
-                    break;
-                case DT_DATE:
-                    vec = new BasicDateVector(colData);
-                    break;
-                case DT_MONTH:
-                    vec = new BasicMonthVector(colData);
-                    break;
-                case DT_DATETIME:
-                    vec = new BasicDateTimeVector(colData);
-                    break;
-                case DT_TIME:
-                    vec = new BasicTimeVector(colData);
-                    break;
-                case DT_SECOND:
-                    vec = new BasicSecondVector(colData);
-                    break;
-                case DT_TIMESTAMP:
-                    vec = new BasicTimestampVector(colData);
-                    break;
-                case DT_NANOTIME:
-                    vec = new BasicNanoTimeVector(colData);
-                    break;
-                case DT_NANOTIMESTAMP:
-                    vec = new BasicNanoTimestampVector(colData);
-                    break;
-                case DT_LONG:
-                    vec = new BasicLongVector(colData);
-                    break;
-                case DT_INT:
-                    vec = new BasicIntVector(colData);
-                    break;
-                case DT_UUID:
-                    vec = new BasicUuidVector(colData);
-                    break;
-                case DT_SHORT:
-                    vec = new BasicShortVector(colData);
-                    break;
-                case DT_STRING:
-                case DT_SYMBOL:
-                    List<String> stringList = new ArrayList<>();
-                    for (int i = 0; i < colData.size() ; i++) {
-                        byte[] bytes = ((String) colData.get(i)).getBytes();
-                        if (bytes.length > 65535) {
-                            stringList.add(((String) colData.get(i)).substring(0, 21845));
-                            LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
-                        } else {
-                            stringList.add((String) colData.get(i));
+            try {
+                switch (targetType) {
+                    case DT_DOUBLE:
+                        vec = new BasicDoubleVector(colData);
+                        break;
+                    case DT_FLOAT:
+                        vec = new BasicFloatVector(colData);
+                        break;
+                    case DT_BOOL:
+                        vec = new BasicBooleanVector(colData);
+                        break;
+                    case DT_DATE:
+                        vec = new BasicDateVector(colData);
+                        break;
+                    case DT_MONTH:
+                        vec = new BasicMonthVector(colData);
+                        break;
+                    case DT_DATETIME:
+                        vec = new BasicDateTimeVector(colData);
+                        break;
+                    case DT_TIME:
+                        vec = new BasicTimeVector(colData);
+                        break;
+                    case DT_SECOND:
+                        vec = new BasicSecondVector(colData);
+                        break;
+                    case DT_TIMESTAMP:
+                        vec = new BasicTimestampVector(colData);
+                        break;
+                    case DT_NANOTIME:
+                        vec = new BasicNanoTimeVector(colData);
+                        break;
+                    case DT_NANOTIMESTAMP:
+                        vec = new BasicNanoTimestampVector(colData);
+                        break;
+                    case DT_LONG:
+                        vec = new BasicLongVector(colData);
+                        break;
+                    case DT_INT:
+                        vec = new BasicIntVector(colData);
+                        break;
+                    case DT_UUID:
+                        vec = new BasicUuidVector(colData);
+                        break;
+                    case DT_SHORT:
+                        vec = new BasicShortVector(colData);
+                        break;
+                    case DT_STRING:
+                    case DT_SYMBOL:
+                        List<String> stringList = new ArrayList<>();
+                        for (int i = 0; i < colData.size() ; i++) {
+                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            if (bytes.length > 65535) {
+                                stringList.add(((String) colData.get(i)).substring(0, 21845));
+                                LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                            } else {
+                                stringList.add((String) colData.get(i));
+                            }
                         }
-                    }
-                    vec = new BasicStringVector(stringList);
-                    break;
-                case DT_BLOB:
-                    List<String> bolbList = new ArrayList<>();
-                    for (int i = 0; i < colData.size() ; i++) {
-                        byte[] bytes = ((String) colData.get(i)).getBytes();
-                        if (bytes.length > 4194304) {
-                            bolbList.add(((String) colData.get(i)).substring(0, 1398101));
-                            LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
-                        } else {
-                            bolbList.add((String) colData.get(i));
+                        vec = new BasicStringVector(stringList);
+                        break;
+                    case DT_BLOB:
+                        List<String> bolbList = new ArrayList<>();
+                        for (int i = 0; i < colData.size() ; i++) {
+                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            if (bytes.length > 4194304) {
+                                bolbList.add(((String) colData.get(i)).substring(0, 1398101));
+                                LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                            } else {
+                                bolbList.add((String) colData.get(i));
+                            }
                         }
-                    }
-                    vec = new BasicStringVector(bolbList,true);
-                    break;
-                case DT_BYTE:
-                    vec = new BasicByteVector(colData);
-                    break;
-                case DT_DECIMAL32: {
-                    int scale = extra;
-                    vec = new BasicDecimal32Vector(colData.size(), scale);
-                    for (int i = 0; i < colData.size(); i++) {
-                        BasicDecimal32 scalar;
-                        if (colData.get(i).equals(Integer.MIN_VALUE)) {
-                            scalar = new BasicDecimal32("0", 0);
-                            scalar.setNull();
-                        } else {
-                            String s = (String) colData.get(i);
-                            scalar = new BasicDecimal32(s, scale);
-                        }
+                        vec = new BasicStringVector(bolbList,true);
+                        break;
+                    case DT_BYTE:
+                        vec = new BasicByteVector(colData);
+                        break;
+                    case DT_DECIMAL32: {
+                        int scale = extra;
+                        vec = new BasicDecimal32Vector(colData.size(), scale);
+                        for (int i = 0; i < colData.size(); i++) {
+                            BasicDecimal32 scalar;
+                            if (colData.get(i).equals(Integer.MIN_VALUE)) {
+                                scalar = new BasicDecimal32("0", 0);
+                                scalar.setNull();
+                            } else {
+                                String s = (String) colData.get(i);
+                                scalar = new BasicDecimal32(s, scale);
+                            }
 
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            try {
+                                vec.set(i, scalar);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
-                case DT_DECIMAL64: {
-                    int scale = extra;
-                    vec = new BasicDecimal64Vector(colData.size(), scale);
-                    for (int i = 0; i < colData.size(); i++) {
-                        BasicDecimal64 scalar;
-                        if (colData.get(i).equals(Long.MIN_VALUE)) {
-                            scalar = new BasicDecimal64("0", 0);
-                            scalar.setNull();
-                        } else {
-                            String s = (String) colData.get(i);
-                            scalar = new BasicDecimal64(s, scale);
-                        }
+                    case DT_DECIMAL64: {
+                        int scale = extra;
+                        vec = new BasicDecimal64Vector(colData.size(), scale);
+                        for (int i = 0; i < colData.size(); i++) {
+                            BasicDecimal64 scalar;
+                            if (colData.get(i).equals(Long.MIN_VALUE)) {
+                                scalar = new BasicDecimal64("0", 0);
+                                scalar.setNull();
+                            } else {
+                                String s = (String) colData.get(i);
+                                scalar = new BasicDecimal64(s, scale);
+                            }
 
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            try {
+                                vec.set(i, scalar);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
-                case DT_DECIMAL128:{
-                    int scale = extra;
-                    vec = new BasicDecimal128Vector(colData.size(), scale);
-                    for (int i = 0; i < colData.size(); i++) {
-                        BasicDecimal128 scalar;
-                        if (colData.get(i).equals(DECIMAL128_MIN_VALUE)) {
-                            scalar = new BasicDecimal128("0", 0);
-                            scalar.setNull();
-                        } else {
-                            String s = (String) colData.get(i);
-                            scalar = new BasicDecimal128(s, scale);
-                        }
+                    case DT_DECIMAL128:{
+                        int scale = extra;
+                        vec = new BasicDecimal128Vector(colData.size(), scale);
+                        for (int i = 0; i < colData.size(); i++) {
+                            BasicDecimal128 scalar;
+                            if (colData.get(i).equals(DECIMAL128_MIN_VALUE)) {
+                                scalar = new BasicDecimal128("0", 0);
+                                scalar.setNull();
+                            } else {
+                                String s = (String) colData.get(i);
+                                scalar = new BasicDecimal128(s, scale);
+                            }
 
-                        try {
-                            vec.set(i, scalar);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            try {
+                                vec.set(i, scalar);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                         }
+                        break;
                     }
-                    break;
                 }
+            } catch (Exception e) {
+                LOG.error("Error generating the table to be written to DolphinDB, error column '" + colNames_.get(column) + "': " + colData + ".");
             }
+
             return vec;
         }
 
@@ -688,125 +813,6 @@ public class DolphinDbWriter extends Writer {
                 }catch (Exception e){
                     LOG.error(e.getMessage(), e);
                 }
-            }
-        }
-
-        @Override
-        public void init() {
-
-            this.writerConfig = super.getPluginJobConf();
-            String host = this.writerConfig.getString(Key.HOST);
-            int port = this.writerConfig.getInt(Key.PORT);
-            String userid = "";
-            String configUserId = this.writerConfig.getString(Key.USER_ID);
-            String configUsername = this.writerConfig.getString(Key.USERNAME);
-            if (StringUtils.isNotEmpty(configUsername) || StringUtils.isNotEmpty(configUserId)) {
-                userid = StringUtils.isNotEmpty(configUsername) ? configUsername : configUserId;
-            }
-            String pwd = "";
-            String configPwd = this.writerConfig.getString(Key.PWD);
-            String configPassword = this.writerConfig.getString(Key.PASSWORD);
-            if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd)) {
-                pwd = StringUtils.isNotEmpty(configPassword) ? configPassword : configPwd;
-            }
-
-            String saveFunctionDef = this.writerConfig.getString(Key.SAVE_FUNCTION_DEF);
-            String saveFunctionName = this.writerConfig.getString(Key.SAVE_FUNCTION_NAME);
-
-            // table:
-            List<Object> tableField = this.writerConfig.getList(Key.TABLE);
-            JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
-            String dbName = this.writerConfig.getString(Key.DB_PATH);
-            String tbName = this.writerConfig.getString(Key.TABLE_NAME);
-
-            // preSql:
-            List<Object> preSqlList = this.writerConfig.getList(Key.PRE_SQL);
-            if (CollectionUtils.isNotEmpty(preSqlList)) {
-                JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
-                List<String> joinPreSqlList = new ArrayList<>();
-                for (Object field : preSqlArr) {
-                    joinPreSqlList.add(field.toString());
-                }
-                this.preSql = StringUtils.join(joinPreSqlList, ";");
-            }
-
-            // postSql:
-            List<Object> postSqlList = this.writerConfig.getList(Key.POST_SQL);
-            if (CollectionUtils.isNotEmpty(postSqlList)) {
-                JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
-                List<String> joinPostSqlList = new ArrayList<>();
-                for (Object field : postSqlArr) {
-                    joinPostSqlList.add(field.toString());
-                }
-                this.postSql = StringUtils.join(joinPostSqlList, ";");
-            }
-
-            // column:
-            List<Object> columList = this.writerConfig.getList(Key.COLUMN);
-            JSONArray columnArr = JSONArray.parseArray(JSON.toJSONString(columList));
-
-            this.dbName = dbName;
-            this.tbName = tbName;
-            if(this.dbName == null || this.dbName.isEmpty()){
-                this.functionSql = String.format("tableInsert{%s}", tbName);
-            }else {
-                this.functionSql = String.format("tableInsert{loadTable('%s','%s')}", dbName, tbName);
-                if (saveFunctionName != null && !saveFunctionName.isEmpty()) {
-                    if (saveFunctionName.equals("upsertTable")){
-                        if (saveFunctionDef.contains("keyColNames")){
-                            String upsertParameter = saveFunctionDef;
-                            saveFunctionDef = DolphinDbTemplate.getTableUpsertScript(userid, pwd, upsertParameter);
-                        }
-                    }
-                    if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
-                        switch (saveFunctionName) {
-                            case "savePartitionedData":
-                                saveFunctionDef = DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
-                                break;
-                            case "saveDimensionData":
-                                saveFunctionDef = DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
-                                break;
-                        }
-                    }
-                    this.functionSql = String.format("%s{'%s','%s'}", saveFunctionName, dbName, tbName);
-                }
-            }
-            dbConnection = new DBConnection();
-            try {
-                if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
-                    dbConnection.connect(host, port, userid, pwd);
-                } else {
-                    LOG.info(saveFunctionDef);
-                    dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
-                }
-
-                if (columnArr != null) {
-                    initColumn(columnArr);
-                } else if (fieldArr != null) {
-                    initTable(fieldArr);
-                }
-            } catch (IOException e) {
-                LOG.info(saveFunctionDef);
-                throw new RuntimeException(e.getMessage(), e);
-            }
-        }
-
-        @Override
-        public void post() {
-            LOG.info("post is invoked");
-            insertToDolphinDB(createUploadTable());
-
-            if (!this.postSql.isEmpty()) {
-                executePostSql(this.postSql);
-            }
-        }
-
-        @Override
-        public void destroy() {
-
-            if (dbConnection != null) {
-                LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Close DBConnection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                dbConnection.close();
             }
         }
     }
