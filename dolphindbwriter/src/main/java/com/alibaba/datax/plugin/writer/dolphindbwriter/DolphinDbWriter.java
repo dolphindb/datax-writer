@@ -169,13 +169,14 @@ public class DolphinDbWriter extends Writer {
                         }
                     }
                     if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
-                        saveFunctionDef = switch (saveFunctionName) {
-                            case "savePartitionedData" ->
-                                    DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
-                            case "saveDimensionData" ->
-                                    DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
-                            default -> saveFunctionDef;
-                        };
+                        switch (saveFunctionName) {
+                            case "savePartitionedData":
+                                saveFunctionDef = DolphinDbTemplate.getDfsTableUpdateScript(userid, pwd, fieldArr);
+                                break;
+                            case "saveDimensionData":
+                                saveFunctionDef = DolphinDbTemplate.getDimensionTableUpdateScript(userid, pwd, fieldArr);
+                                break;
+                        }
                     }
                     this.functionSql = String.format("%s{'%s','%s'}", saveFunctionName, dbName, tbName);
                 }
