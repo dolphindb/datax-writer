@@ -521,6 +521,7 @@ public class DolphinDbWriter extends Writer {
 
         private Vector generateDDBTableColumn(List colData, Entity.DATA_TYPE targetType, int extra, int column) {
             Vector vec = null;
+            String currentDecimalValue = null;
             try {
                 switch (targetType) {
                     case DT_DOUBLE:
@@ -608,6 +609,7 @@ public class DolphinDbWriter extends Writer {
                                 scalar.setNull();
                             } else {
                                 String s = (String) colData.get(i);
+                                currentDecimalValue = s;
                                 scalar = new BasicDecimal32(s, scale);
                             }
 
@@ -629,6 +631,7 @@ public class DolphinDbWriter extends Writer {
                                 scalar.setNull();
                             } else {
                                 String s = (String) colData.get(i);
+                                currentDecimalValue = s;
                                 scalar = new BasicDecimal64(s, scale);
                             }
 
@@ -650,6 +653,7 @@ public class DolphinDbWriter extends Writer {
                                 scalar.setNull();
                             } else {
                                 String s = (String) colData.get(i);
+                                currentDecimalValue = s;
                                 scalar = new BasicDecimal128(s, scale);
                             }
 
@@ -663,7 +667,17 @@ public class DolphinDbWriter extends Writer {
                     }
                 }
             } catch (Exception e) {
-                LOG.error("Error generating the table to be written to DolphinDB, error column '" + colNames_.get(column) + "': " + colData + ".");
+                StringBuilder errorMsg = new StringBuilder();
+                errorMsg.append("Error generating the table to be written to DolphinDB, error column '")
+                        .append(colNames_.get(column))
+                        .append("': ");
+                if (targetType == Entity.DATA_TYPE.DT_DECIMAL32 || targetType == Entity.DATA_TYPE.DT_DECIMAL64 || targetType == Entity.DATA_TYPE.DT_DECIMAL128)
+                    errorMsg.append(currentDecimalValue).append(".");
+                else
+                    errorMsg.append(colData).append(".");
+
+                LOG.error(errorMsg.toString());
+                throw new RuntimeException(errorMsg.toString());
             }
 
             return vec;
