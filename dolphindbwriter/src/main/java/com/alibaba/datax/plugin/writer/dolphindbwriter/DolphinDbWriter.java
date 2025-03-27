@@ -277,7 +277,8 @@ public class DolphinDbWriter extends Writer {
             try {
                 dbConnection.run(preSql);
             } catch (IOException e) {
-                LOG.error(e.getMessage(), e);
+                LOG.error("execute preSql failed: " + e.getMessage());
+                throw new RuntimeException("execute preSql failed: " + e.getMessage());
             }
         }
 
@@ -286,7 +287,7 @@ public class DolphinDbWriter extends Writer {
             try {
                 dbConnection.run(postSql);
             } catch (IOException e) {
-                LOG.error(e.getMessage(), e);
+                LOG.error("execute postSql failed: " + e.getMessage());
             }
         }
 
