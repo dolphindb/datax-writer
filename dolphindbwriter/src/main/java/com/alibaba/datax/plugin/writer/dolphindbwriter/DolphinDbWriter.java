@@ -151,6 +151,9 @@ public class DolphinDbWriter extends Writer {
                 this.postSql = StringUtils.join(joinPostSqlList, ";");
             }
 
+            // taskWriteTimeout:
+            Integer taskWriteTimeout = this.writerConfig.getInt(Key.TASK_WRITE_TIMEOUT);
+
             // column:
             List<Object> columList = this.writerConfig.getList(Key.COLUMN);
             JSONArray columnArr = JSONArray.parseArray(JSON.toJSONString(columList));
@@ -182,14 +185,19 @@ public class DolphinDbWriter extends Writer {
                 }
             }
 
-            dbConnection = new DBConnection();
             try {
-                if (saveFunctionDef == null || saveFunctionDef.isEmpty()) {
-                    dbConnection.connect(host, port, userid, pwd);
-                } else {
-                    LOG.info(saveFunctionDef);
-                    dbConnection.connect(host, port, userid, pwd, saveFunctionDef);
-                }
+                dbConnection = new DBConnection();
+                DBConnection.ConnectConfig connectConfig;
+                connectConfig = DBConnection.ConnectConfig.builder()
+                        .hostName(host)
+                        .port(port)
+                        .userId(userid)
+                        .password(pwd)
+                        .initialScript(saveFunctionDef)
+                        .readTimeout(taskWriteTimeout)
+                        .build();
+
+                dbConnection.connect(connectConfig);
 
                 if (columnArr != null) {
                     initColumn(columnArr);
@@ -252,8 +260,13 @@ public class DolphinDbWriter extends Writer {
                 args.add(bt);
                 dbConnection.run(this.functionSql, args);
             } catch (IOException ex) {
-                LOG.error("Failed to insert the table with error: " + ex.getMessage());
-                throw new RuntimeException(ex.getMessage(), ex);
+                if (ex.getMessage().contains("Read timed out")) {
+                    LOG.error("Failed to insert the table with error: execute current task timeout!");
+                    throw new RuntimeException("Failed to insert the table with error: execute current task timeout!", ex);
+                } else {
+                    LOG.error("Failed to insert the table with error: " + ex.getMessage());
+                    throw new RuntimeException(ex.getMessage(), ex);
+                }
             }
 
             LOG.info("End inserting a table to DolphinDB.");
