@@ -33,9 +33,10 @@ public class DolphinDbWriter extends Writer {
 
     public static class Job extends Writer.Job {
 
-        private static final Logger LOG = LoggerFactory.getLogger(Job.class);
-
         private Configuration writerConfig = null;
+        private DBConnection connection = null;
+
+        private static final Logger LOG = LoggerFactory.getLogger(Job.class);
 
         @Override
         public List<Configuration> split(int mandatoryNumber) {
@@ -54,8 +55,40 @@ public class DolphinDbWriter extends Writer {
         }
 
         @Override
-        public void destroy() {
+        public void prepare() {
+            // execute preSql:
+            List<Object> preSqlList = this.writerConfig.getList(Key.PRE_SQL);
+            if (CollectionUtils.isNotEmpty(preSqlList)) {
+                JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
+                List<String> joinPreSqlList = new ArrayList<>();
+                for (Object field : preSqlArr)
+                    joinPreSqlList.add(field.toString());
+                String preSql = StringUtils.join(joinPreSqlList, ";");
+                if (!preSql.isEmpty())
+                    executePreSql(preSql);
+            }
+        }
 
+        @Override
+        public void post() {
+            // execute postSql:
+            List<Object> postSqlList = this.writerConfig.getList(Key.POST_SQL);
+            if (CollectionUtils.isNotEmpty(postSqlList)) {
+                JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
+                List<String> joinPostSqlList = new ArrayList<>();
+                for (Object field : postSqlArr)
+                    joinPostSqlList.add(field.toString());
+                String postSql = StringUtils.join(joinPostSqlList, ";");
+                if (!postSql.isEmpty())
+                    executePostSql(postSql);
+            }
+        }
+
+        @Override
+        public void destroy() {
+            if (Objects.nonNull(connection)) {
+                connection.close();
+            }
         }
 
         private void validateParameter() {
@@ -79,6 +112,25 @@ public class DolphinDbWriter extends Writer {
                 throw DataXException.asDataXException(DolphinDbWriterErrorCode.REQUIRED_VALUE, "The configuration file you provided is wrong, either table or column must be filled in, empty or blank is not allowed.");
             }
         }
+
+        private void executePreSql(String preSql) {
+            LOG.info("DolphinDbWriter.Job.prepare() execute preSql: " + preSql);
+            try {
+                connection.run(preSql);
+            } catch (IOException e) {
+                LOG.error("DolphinDbWriter.Job.prepare() execute preSql failed: " + e.getMessage());
+                throw new RuntimeException("execute preSql failed: " + e.getMessage());
+            }
+        }
+
+        private void executePostSql(String postSql) {
+            LOG.info("DolphinDbWriter.Job.prepare() execute postSql: " + postSql);
+            try {
+                connection.run(postSql);
+            } catch (IOException e) {
+                LOG.error("DolphinDbWriter.Job.prepare() execute postSql failed: " + e.getMessage());
+            }
+        }
     }
 
     public static class Task extends Writer.Task {
@@ -87,8 +139,6 @@ public class DolphinDbWriter extends Writer {
         private Configuration writerConfig = null;
         private DBConnection dbConnection = null;
         private String functionSql = "";
-        private String preSql = "";
-        private String postSql = "";
         private String dbName = "";
         private String tbName = "";
         private List<String> colNames_ = null;
@@ -128,28 +178,6 @@ public class DolphinDbWriter extends Writer {
             JSONArray fieldArr = JSONArray.parseArray(JSON.toJSONString(tableField));
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
-
-            // preSql:
-            List<Object> preSqlList = this.writerConfig.getList(Key.PRE_SQL);
-            if (CollectionUtils.isNotEmpty(preSqlList)) {
-                JSONArray preSqlArr = JSONArray.parseArray(JSON.toJSONString(preSqlList));
-                List<String> joinPreSqlList = new ArrayList<>();
-                for (Object field : preSqlArr) {
-                    joinPreSqlList.add(field.toString());
-                }
-                this.preSql = StringUtils.join(joinPreSqlList, ";");
-            }
-
-            // postSql:
-            List<Object> postSqlList = this.writerConfig.getList(Key.POST_SQL);
-            if (CollectionUtils.isNotEmpty(postSqlList)) {
-                JSONArray postSqlArr = JSONArray.parseArray(JSON.toJSONString(postSqlList));
-                List<String> joinPostSqlList = new ArrayList<>();
-                for (Object field : postSqlArr) {
-                    joinPostSqlList.add(field.toString());
-                }
-                this.postSql = StringUtils.join(joinPostSqlList, ";");
-            }
 
             // taskWriteTimeout:
             Integer taskWriteTimeout = this.writerConfig.getInt(Key.TASK_WRITE_TIMEOUT);
@@ -218,9 +246,6 @@ public class DolphinDbWriter extends Writer {
             if (Objects.isNull(batchSize))
                 batchSize = 100000;
 
-            if (!this.preSql.isEmpty())
-                executePreSql(this.preSql);
-
             while ((record = lineReceiver.getFromReader()) != null) {
                 parseRecordData(record);
                 List firstColumn = colDatas_.get(0);
@@ -237,14 +262,11 @@ public class DolphinDbWriter extends Writer {
         public void post() {
             LOG.info("post() is invoked.");
             insertToDolphinDB(createUploadTable());
-
-            if (!this.postSql.isEmpty())
-                executePostSql(this.postSql);
         }
 
         @Override
         public void destroy() {
-            if (dbConnection != null) {
+            if (Objects.nonNull(dbConnection)) {
                 LOG.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Close DBConnection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 dbConnection.close();
             }
@@ -270,25 +292,6 @@ public class DolphinDbWriter extends Writer {
             }
 
             LOG.info("End inserting a table to DolphinDB.");
-        }
-
-        private void executePreSql(String preSql) {
-            LOG.info("execute preSql: " + preSql + " before insertToDolphinDB.");
-            try {
-                dbConnection.run(preSql);
-            } catch (IOException e) {
-                LOG.error("execute preSql failed: " + e.getMessage());
-                throw new RuntimeException("execute preSql failed: " + e.getMessage());
-            }
-        }
-
-        private void executePostSql(String postSql) {
-            LOG.info("execute postSql: " + postSql + " after insertToDolphinDB.");
-            try {
-                dbConnection.run(postSql);
-            } catch (IOException e) {
-                LOG.error("execute postSql failed: " + e.getMessage());
-            }
         }
 
         private void parseRecordData(Record record) throws RuntimeException {
@@ -839,7 +842,7 @@ public class DolphinDbWriter extends Writer {
                         this.extras_.add(extraInt.getInt(i));
                     }
 
-                }catch (Exception e){
+                } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
             }
