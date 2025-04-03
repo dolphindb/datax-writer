@@ -222,7 +222,7 @@ public class DolphinDbWriter extends Writer {
                         .userId(userid)
                         .password(pwd)
                         .initialScript(saveFunctionDef)
-                        .readTimeout(taskWriteTimeout)
+                        .readTimeout(Objects.isNull(taskWriteTimeout) ? 0 : taskWriteTimeout)
                         .build();
 
                 dbConnection.connect(connectConfig);
