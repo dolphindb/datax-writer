@@ -52,6 +52,38 @@ public class DolphinDbWriter extends Writer {
             this.writerConfig = this.getPluginJobConf();
             this.validateParameter();
             LOG.info("Dolphindb Writer config params:{}", this.writerConfig.toJSON());
+
+            String host = this.writerConfig.getString(Key.HOST);
+            int port = this.writerConfig.getInt(Key.PORT);
+            String userid = "";
+            String configUserId = this.writerConfig.getString(Key.USER_ID);
+            String configUsername = this.writerConfig.getString(Key.USERNAME);
+            if (StringUtils.isNotEmpty(configUsername) || StringUtils.isNotEmpty(configUserId))
+                userid = StringUtils.isNotEmpty(configUsername) ? configUsername : configUserId;
+
+            String pwd = "";
+            String configPwd = this.writerConfig.getString(Key.PWD);
+            String configPassword = this.writerConfig.getString(Key.PASSWORD);
+            if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd))
+                pwd = StringUtils.isNotEmpty(configPassword) ? configPassword : configPwd;
+
+            Integer taskWriteTimeout = this.writerConfig.getInt(Key.TASK_WRITE_TIMEOUT);
+
+            try {
+                connection = new DBConnection();
+                DBConnection.ConnectConfig connectConfig;
+                connectConfig = DBConnection.ConnectConfig.builder()
+                        .hostName(host)
+                        .port(port)
+                        .userId(userid)
+                        .password(pwd)
+                        .readTimeout(Objects.isNull(taskWriteTimeout) ? 0 : taskWriteTimeout)
+                        .build();
+
+                connection.connect(connectConfig);
+            } catch (IOException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
         }
 
         @Override
