@@ -67,7 +67,7 @@ public class DolphinDbWriter extends Writer {
             if (StringUtils.isNotEmpty(configPassword) || StringUtils.isNotEmpty(configPwd))
                 pwd = StringUtils.isNotEmpty(configPassword) ? configPassword : configPwd;
 
-            Integer taskWriteTimeout = this.writerConfig.getInt(Key.TASK_WRITE_TIMEOUT);
+            Integer writeTimeout = this.writerConfig.getInt(Key.WRITE_TIMEOUT);
 
             try {
                 connection = new DBConnection();
@@ -77,7 +77,7 @@ public class DolphinDbWriter extends Writer {
                         .port(port)
                         .userId(userid)
                         .password(pwd)
-                        .readTimeout(Objects.isNull(taskWriteTimeout) ? 0 : taskWriteTimeout)
+                        .readTimeout(Objects.isNull(writeTimeout) ? 0 : writeTimeout)
                         .build();
 
                 connection.connect(connectConfig);
@@ -211,8 +211,8 @@ public class DolphinDbWriter extends Writer {
             String dbName = this.writerConfig.getString(Key.DB_PATH);
             String tbName = this.writerConfig.getString(Key.TABLE_NAME);
 
-            // taskWriteTimeout:
-            Integer taskWriteTimeout = this.writerConfig.getInt(Key.TASK_WRITE_TIMEOUT);
+            // writeTimeout:
+            Integer writeTimeout = this.writerConfig.getInt(Key.WRITE_TIMEOUT);
 
             // column:
             List<Object> columList = this.writerConfig.getList(Key.COLUMN);
@@ -254,7 +254,7 @@ public class DolphinDbWriter extends Writer {
                         .userId(userid)
                         .password(pwd)
                         .initialScript(saveFunctionDef)
-                        .readTimeout(Objects.isNull(taskWriteTimeout) ? 0 : taskWriteTimeout)
+                        .readTimeout(Objects.isNull(writeTimeout) ? 0 : writeTimeout)
                         .build();
 
                 dbConnection.connect(connectConfig);

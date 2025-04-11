@@ -37,5 +37,5 @@ public class Key {
 
     public static final String COLUMN = "column";
 
-    public static final String TASK_WRITE_TIMEOUT = "taskWriteTimeout";
+    public static final String WRITE_TIMEOUT = "writeTimeout";
 }
