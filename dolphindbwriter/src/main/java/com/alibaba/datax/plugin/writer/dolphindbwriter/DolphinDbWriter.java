@@ -150,17 +150,28 @@ public class DolphinDbWriter extends Writer {
             try {
                 connection.run(preSql);
             } catch (IOException e) {
-                LOG.error("DolphinDbWriter.Job.prepare() execute preSql failed: " + e.getMessage());
-                throw new RuntimeException("execute preSql failed: " + e.getMessage());
+                if (e.getMessage().contains("Read timed out")) {
+                    LOG.error("DolphinDbWriter.Job.prepare() execute preSql timeout!");
+                    throw new RuntimeException("DolphinDbWriter.Job.prepare() execute preSql timeout!", e);
+                } else {
+                    LOG.error("DolphinDbWriter.Job.prepare() execute preSql failed: " + e.getMessage());
+                    throw new RuntimeException("DolphinDbWriter.Job.prepare() execute preSql failed: " + e.getMessage());
+                }
             }
         }
 
         private void executePostSql(String postSql) {
-            LOG.info("DolphinDbWriter.Job.prepare() execute postSql: " + postSql);
+            LOG.info("DolphinDbWriter.Job.post() execute postSql: " + postSql);
             try {
                 connection.run(postSql);
             } catch (IOException e) {
-                LOG.error("DolphinDbWriter.Job.prepare() execute postSql failed: " + e.getMessage());
+                if (e.getMessage().contains("Read timed out")) {
+                    LOG.error("DolphinDbWriter.Job.post() execute postSql timeout!");
+                    throw new RuntimeException("DolphinDbWriter.Job.post() execute postSql timeout!", e);
+                } else {
+                    LOG.error("DolphinDbWriter.Job.post() execute postSql failed: " + e.getMessage());
+                    throw new RuntimeException("DolphinDbWriter.Job.post() execute postSql failed: " + e.getMessage());
+                }
             }
         }
     }
