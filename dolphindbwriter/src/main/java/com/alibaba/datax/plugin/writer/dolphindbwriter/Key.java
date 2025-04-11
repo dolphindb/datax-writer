@@ -36,4 +36,6 @@ public class Key {
     public static final String POST_SQL = "postSql";
 
     public static final String COLUMN = "column";
+
+    public static final String TASK_WRITE_TIMEOUT = "taskWriteTimeout";
 }
