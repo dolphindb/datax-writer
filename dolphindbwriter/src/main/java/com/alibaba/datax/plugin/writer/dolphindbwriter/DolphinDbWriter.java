@@ -29,7 +29,7 @@ import java.util.*;
 
 public class DolphinDbWriter extends Writer {
 
-    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.3";
+    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.4";
 
     public static class Job extends Writer.Job {
 
