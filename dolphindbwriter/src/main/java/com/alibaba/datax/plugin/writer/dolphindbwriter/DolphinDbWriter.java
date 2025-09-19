@@ -494,7 +494,7 @@ public class DolphinDbWriter extends Writer {
                         colData.add(column.asString());
                         break;
                     case DT_BYTE:
-                        colData.add(column.asBytes());
+                        colData.add(Byte.parseByte(column.asString()));
                         break;
                     case DT_DECIMAL32:
                         colData.add(column.asString());
