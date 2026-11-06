@@ -190,6 +190,8 @@ public class DolphinDbWriter extends Writer {
 
         private List<Integer> extras_ = null;
 
+        private long[] nulStrippedCells_ = null;
+
         private HashMap<Integer, Integer> writeToReadIndexMap;
 
         private boolean useColumnsParamNotEmpty = false;
@@ -275,6 +277,8 @@ public class DolphinDbWriter extends Writer {
                 } else if (fieldArr != null) {
                     initTable(fieldArr);
                 }
+                if (colNames_ != null)
+                    nulStrippedCells_ = new long[colNames_.size()];
             } catch (IOException e) {
                 LOG.info(saveFunctionDef);
                 throw new RuntimeException(e.getMessage(), e);
@@ -305,6 +309,18 @@ public class DolphinDbWriter extends Writer {
         public void post() {
             LOG.info("post() is invoked.");
             insertToDolphinDB(createUploadTable());
+            if (nulStrippedCells_ != null) {
+                StringBuilder strippedColumns = new StringBuilder();
+                for (int i = 0; i < nulStrippedCells_.length; i++) {
+                    if (nulStrippedCells_[i] > 0) {
+                        if (strippedColumns.length() > 0)
+                            strippedColumns.append(", ");
+                        strippedColumns.append(colNames_.get(i)).append('=').append(nulStrippedCells_[i]);
+                    }
+                }
+                if (strippedColumns.length() > 0)
+                    LOG.warn("Removed NUL(\\u0000) characters from string values, affected cells per column: " + strippedColumns);
+            }
         }
 
         @Override
@@ -633,12 +649,18 @@ public class DolphinDbWriter extends Writer {
                     case DT_SYMBOL:
                         List<String> stringList = new ArrayList<>();
                         for (int i = 0; i < colData.size() ; i++) {
-                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            String stringValue = (String) colData.get(i);
+                            if (stringValue.indexOf('\u0000') >= 0) {
+                                stringValue = stringValue.replace("\u0000", "");
+                                if (nulStrippedCells_[column]++ == 0)
+                                    LOG.warn("Column '{}' contains NUL(\\u0000) characters which {} cannot store; removing them and keeping the rest of the value.", colNames_.get(column), targetType);
+                            }
+                            byte[] bytes = stringValue.getBytes();
                             if (bytes.length > 65535) {
-                                stringList.add(((String) colData.get(i)).substring(0, 21845));
+                                stringList.add(stringValue.substring(0, 21845));
                                 LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
                             } else {
-                                stringList.add((String) colData.get(i));
+                                stringList.add(stringValue);
                             }
                         }
                         vec = new BasicStringVector(stringList);
