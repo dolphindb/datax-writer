@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -200,6 +201,8 @@ public class DolphinDbWriter extends Writer {
 
         private long[] nulStrippedCells_ = null;
 
+        private long[] roundedCells_ = null;
+
         private HashMap<Integer, Integer> writeToReadIndexMap;
 
         private boolean useColumnsParamNotEmpty = false;
@@ -351,8 +354,10 @@ public class DolphinDbWriter extends Writer {
                 } else if (fieldArr != null) {
                     initTable(fieldArr);
                 }
-                if (colNames_ != null)
+                if (colNames_ != null) {
                     nulStrippedCells_ = new long[colNames_.size()];
+                    roundedCells_ = new long[colNames_.size()];
+                }
             } catch (IOException e) {
                 LOG.info(saveFunctionDef);
                 throw new RuntimeException(e.getMessage(), e);
@@ -394,6 +399,18 @@ public class DolphinDbWriter extends Writer {
                 }
                 if (strippedColumns.length() > 0)
                     LOG.warn("Removed NUL(\\u0000) characters from string values, affected cells per column: " + strippedColumns);
+            }
+            if (roundedCells_ != null) {
+                StringBuilder roundedColumns = new StringBuilder();
+                for (int i = 0; i < roundedCells_.length; i++) {
+                    if (roundedCells_[i] > 0) {
+                        if (roundedColumns.length() > 0)
+                            roundedColumns.append(", ");
+                        roundedColumns.append(colNames_.get(i)).append('=').append(roundedCells_[i]);
+                    }
+                }
+                if (roundedColumns.length() > 0)
+                    LOG.warn("Rounded fractional values to integral, affected cells per column: " + roundedColumns);
             }
         }
 
@@ -546,6 +563,20 @@ public class DolphinDbWriter extends Writer {
             }
         }
 
+        private long toIntegral(Column column, long min, long max, int index) {
+            BigDecimal raw = column.getType() == Column.Type.DATE
+                    ? BigDecimal.valueOf(column.asLong())
+                    : column.asBigDecimal();
+            BigDecimal rounded = raw.setScale(0, RoundingMode.HALF_UP);
+            if (raw.compareTo(rounded) != 0) {
+                if (roundedCells_[index]++ == 0)
+                    LOG.warn("Column '{}' values have fractional parts; rounding to nearest integral value (half up) for {}.", colNames_.get(index), Utils.getDataTypeString(colTypes_.get(index)));
+            }
+            if (rounded.compareTo(BigDecimal.valueOf(min)) < 0 || rounded.compareTo(BigDecimal.valueOf(max)) > 0)
+                throw new ArithmeticException("Value " + column.asString() + " is out of range [" + min + ", " + max + "] for " + Utils.getDataTypeString(colTypes_.get(index)) + ".");
+            return rounded.longValue();
+        }
+
         private void setData(int index, Column column) {
             List colData = colDatas_.get(index);
             Entity.DATA_TYPE targetType = colTypes_.get(index);
@@ -626,10 +657,10 @@ public class DolphinDbWriter extends Writer {
                         colData.add(Utils.countNanoseconds(columnToLocalDateTime(column)));
                         break;
                     case DT_LONG:
-                        colData.add(column.asLong());
+                        colData.add(toIntegral(column, Long.MIN_VALUE + 1, Long.MAX_VALUE, index));
                         break;
                     case DT_INT:
-                        colData.add(Integer.parseInt(column.asString()));
+                        colData.add((int) toIntegral(column, Integer.MIN_VALUE + 1L, Integer.MAX_VALUE, index));
                         break;
                     case DT_UUID:
                         colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
@@ -647,7 +678,7 @@ public class DolphinDbWriter extends Writer {
                         colData.add(parsePointValue(column.asString()));
                         break;
                     case DT_SHORT:
-                        colData.add(Short.parseShort(column.asString()));
+                        colData.add((short) toIntegral(column, Short.MIN_VALUE + 1, Short.MAX_VALUE, index));
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
@@ -655,7 +686,7 @@ public class DolphinDbWriter extends Writer {
                         colData.add(column.asString());
                         break;
                     case DT_BYTE:
-                        colData.add(Byte.parseByte(column.asString()));
+                        colData.add((byte) toIntegral(column, Byte.MIN_VALUE + 1, Byte.MAX_VALUE, index));
                         break;
                     case DT_DECIMAL32:
                         colData.add(column.asString());
