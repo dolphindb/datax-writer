@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -539,8 +540,10 @@ public class DolphinDbWriter extends Writer {
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
-                    case DT_BLOB:
                         colData.add("");
+                        break;
+                    case DT_BLOB:
+                        colData.add(new byte[0]);
                         break;
                     case DT_BYTE:
                         colData.add((byte) -128);
@@ -682,8 +685,12 @@ public class DolphinDbWriter extends Writer {
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
-                    case DT_BLOB:
                         colData.add(column.asString());
+                        break;
+                    case DT_BLOB:
+                        colData.add(column.getRawData() instanceof byte[]
+                                ? column.asBytes()
+                                : column.asString().getBytes(StandardCharsets.UTF_8));
                         break;
                     case DT_BYTE:
                         colData.add((byte) toIntegral(column, Byte.MIN_VALUE + 1, Byte.MAX_VALUE, index));
@@ -748,8 +755,10 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_STRING:
                 case DT_SYMBOL:
-                case DT_BLOB:
                     vec = new ArrayList<String>();
+                    break;
+                case DT_BLOB:
+                    vec = new ArrayList<byte[]>();
                     break;
                 case DT_BYTE:
                     vec = new ArrayList<Byte>();
@@ -867,17 +876,18 @@ public class DolphinDbWriter extends Writer {
                         vec = new BasicStringVector(stringList);
                         break;
                     case DT_BLOB:
-                        List<String> bolbList = new ArrayList<>();
+                        byte[][] blobArr = new byte[colData.size()][];
                         for (int i = 0; i < colData.size() ; i++) {
-                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            byte[] bytes = (byte[]) colData.get(i);
+                            if (bytes == null)
+                                bytes = new byte[0];
                             if (bytes.length > 4194304) {
-                                bolbList.add(((String) colData.get(i)).substring(0, 1398101));
-                                LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
-                            } else {
-                                bolbList.add((String) colData.get(i));
+                                LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob to the first 4194304 bytes. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                                bytes = Arrays.copyOf(bytes, 4194304);
                             }
+                            blobArr[i] = bytes;
                         }
-                        vec = new BasicStringVector(bolbList,true);
+                        vec = new BasicStringVector(blobArr);
                         break;
                     case DT_BYTE:
                         vec = new BasicByteVector(colData);
