@@ -113,7 +113,7 @@ python main.py /root/datax/bin/datax.py /root/datax/myconf/BASECODE.json [run_ty
 #### 2.4.3 数据导入预处理
 
 在数据进入 DolphinDB 分布式库之前，某些场景下需要对数据做一些预处理，比如数据格式转换，参照值转换等。这一功能可以通过自定义 `saveFunctionDef` 来实现，在数据上传到 DolphinDB 内存中，若 `saveFunctionDef` 有定义，插件会用此函数来替换 tableInsert 函数，将数据处理逻辑插入数据写入之前即可实现上述的功能。
-此函数定义必须有三个参数： *dbPath*, *tbName*, *data*，分别对应数据库路径(如 `dfs://db1`)，数据表名称，待写入的数据。
+此函数定义必须有三个参数： *dfsPath*, *tbName*, *data*，分别对应分布式库路径(如 `dfs://db1`)，数据表名称，待写入的数据。
 
 ## 附录
 
@@ -301,8 +301,8 @@ BASECODE.json
   	* 默认值：无。
   	* 使用说明：
   		* 字段之间用英文逗号分隔，例如: "column": ["id","name","age"]。
-  		* 如果要依次写入全部列，使用表示，例如: "column": ["*"]。
-  		* 不可以为空 “column": []，或者”column": [““]。
+  		* 如果要依次写入全部列，使用"*"表示，例如: "column": ["*"]。
+  		* 不可以为空，如 "column": []，或者 "column": [""]。
   		* 导入数据是按照原表的字段顺序，无法通过识别新表的字段名称而改变数据顺序。
 
   * **tableName**
@@ -313,7 +313,7 @@ BASECODE.json
   * **batchSize**
     * 描述: datax 每次写入 dolphindb 的批次记录数。
     * 必须: 否。
-    * 默认值: 10,000,000。
+    * 默认值: 100,000。
 
   * **table**
     * 描述：写入表的字段集合。内部结构为：`{"name": "columnName", "type": "DT_STRING", "isKeyField":true}`。请注意此处列定义的顺序，需要与原表提取的列顺序完全一致。
@@ -322,24 +322,37 @@ BASECODE.json
       * type：枚举值以及对应 DataX 数据类型如下表。DolphinDB 的数据类型及精度请参考[数据类型](https://www.dolphindb.cn/cn/help/DataTypesandStructures/DataTypes/index.html)。
 
     |  DolphinDB 类型 |  配置值 |  DataX 类型|
-	  |:-------------|:--------|:-----------|
-  	|DOUBLE | DT_DOUBLE | DOUBLE|
+    |:-------------|:--------|:-----------|
+    |DOUBLE | DT_DOUBLE | DOUBLE|
     |FLOAT|DT_FLOAT|DOUBLE|
+    |DECIMAL32|DT_DECIMAL32|DOUBLE 或 STRING|
+    |DECIMAL64|DT_DECIMAL64|DOUBLE 或 STRING|
+    |DECIMAL128|DT_DECIMAL128|DOUBLE 或 STRING|
     |BOOL|DT_BOOL|BOOLEAN|
-    |DATE|DT_DATE|DATE|
-    |MONTH|DT_MONTH|DATE|
-    |DATETIME|DT_DATETIME| DATE|
-    |TIME|DT_TIME|DATE|
-    |SECOND|DT_SECOND|DATE|
-    |TIMESTAMP|DT_TIMESTAMP| DATE|
-    |NANOTIME|DT_NANOTIME| DATE|
-    |NANOTIMETAMP|DT_NANOTIMETAMP| DATE|
     |INT|DT_INT|LONG|
     |LONG|DT_LONG|LONG|
-    |UUID|DT_UUID|STRING|
     |SHORT|DT_SHORT|LONG|
+    |CHAR|DT_BYTE|LONG|
+    |DATE|DT_DATE|DATE 或 STRING|
+    |MONTH|DT_MONTH|DATE 或 STRING|
+    |DATETIME|DT_DATETIME|DATE 或 STRING|
+    |DATEHOUR|DT_DATEHOUR|DATE 或 STRING|
+    |TIME|DT_TIME|DATE 或 STRING|
+    |MINUTE|DT_MINUTE|DATE 或 STRING|
+    |SECOND|DT_SECOND|DATE 或 STRING|
+    |TIMESTAMP|DT_TIMESTAMP|DATE 或 STRING|
+    |NANOTIME|DT_NANOTIME|DATE 或 STRING|
+    |NANOTIMESTAMP|DT_NANOTIMESTAMP|DATE 或 STRING|
+    |UUID|DT_UUID|STRING|
+    |IPADDR|DT_IPADDR|STRING|
+    |INT128|DT_INT128|STRING|
     |STRING|DT_STRING|STRING|
     |SYMBOL|DT_SYMBOL|STRING|
+    |BLOB|DT_BLOB|BYTES 或 STRING|
+    |COMPLEX|DT_COMPLEX|STRING|
+    |POINT|DT_POINT|STRING|
+
+      说明：时间类列输入为字符串时按 DolphinDB 原生格式解析（如 `2024.01.01T10:00:00.123`、`13:30:10.008`、`2024.01M`），可保留毫秒/纳秒精度；CHAR（DT_BYTE）接受字节数值（如 `65`→`A`）；BLOB 列输入为二进制（BytesColumn，如 Oracle RAW/BLOB）时按原始字节写入，输入文本时按 UTF-8 编码；COMPLEX 接受 `a±bi` 格式（如 `1.5+2.3i`），POINT 接受 `(x, y)` 或 `x,y` 格式。
 
     * 必选：是。
     * 默认值：无。
@@ -355,9 +368,50 @@ BASECODE.json
   * 必选：当 saveFunctionName 参数不为空且非两个枚举值之一时，此参数必填。
   * 默认值：无。
 
+* **writeTimeout**
+  * 描述：每次写入的执行超时时间，单位为毫秒（ms）。如果未设置，则将一直等待写入完成。
+  * 必选：否。
+  * 默认值：无。
+
 * 引入 DolphinDB 的 [`upsert!`](https://www.dolphindb.cn/cn/help/FunctionsandCommands/FunctionReferences/u/upsert%21.html) 功能，修改配置文件 BASECODE.json 中的 `writer` 部分。
 
     ``` 
     "saveFunctionName":"upsertTable",
     "saveFunctionDef":"ignoreNull=true;keyColNames=`id;sortColumns=`value"
     ```
+
+* **特殊情况 - 时间精度**
+
+  自 1.30.22.5 起，reader 以字符串形式传递的时间字段会按 DolphinDB 原生格式直接解析（如 `2024.01.01T10:00:00.123`、`13:30:10.008`），写入 TIME/TIMESTAMP/NANOTIME/NANOTIMESTAMP 等列时毫秒/纳秒精度可保留，无需特殊处理。
+
+  以下两种场景仍会丢失毫秒以下精度或无法解析，需要按下文方案处理：
+
+  * 上游时间字符串**不是** DolphinDB 原生格式（如 `2024-01-01 10:00:00`），且需要毫秒及以上精度；
+  * reader 以 `DateColumn` 传递时间字段（上游列本身是时间类型而非字符串），且目标列为 NANOTIMESTAMP 等纳秒类型——`java.util.Date` 本身只保留毫秒。
+
+  解决方案：将 dolphindbwriter 对应字段的 type 配置为 `DT_STRING`，再通过写自定义处理函数，将 STRING 转换成 DolphinDB 的时间类型。
+
+  ```
+  "writer": {
+                    "name": "dolphindbwriter",
+                    "parameter": {
+                        "userId": "user",
+                        "pwd": "pass",
+                        "host": "127.0.0.1",
+                        "port": 8848,
+                        "dbPath": "dfs://TESTDB",
+                        "tableName": "BASECODE1",
+                        "batchSize": 100000,
+                        "saveFunctionName":"updateData",
+                        "saveFunctionDef":"def updateData(dfsPath, tbName, mutable data){login('admin', '123456');data.replaceColumn!(`Dtime, temporalParse(data.Dtime, 'HH:mm:ss.SSS'));loadTable(dfsPath, tbName).append!(data)}",
+                        "table": [
+                            {
+                                "type": "DT_STRING",
+                                "name": "Dtime"
+                            }
+                        ]
+                    }
+                }
+  ```
+
+  注：1.30.22.5 之前版本中，只要上游以字符串传递时间字段，配置 `DT_TIME`/`DT_TIMESTAMP` 等就会丢失毫秒精度（如 `09:00:01.123` 入库变 `09:00:01.000`），所有字符串时间字段都需要上述绕行方案。
