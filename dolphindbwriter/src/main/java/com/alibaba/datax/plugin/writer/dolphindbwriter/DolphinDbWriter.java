@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.xxdb.DBConnection;
 import com.xxdb.data.*;
 import com.xxdb.data.Vector;
+import com.xxdb.io.Double2;
 import com.xxdb.io.Long2;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -23,13 +24,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 public class DolphinDbWriter extends Writer {
 
-    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.4";
+    private static final String DOLPHINDB_DATAX_WRITER_VERSION = "1.30.22.5";
 
     public static class Job extends Writer.Job {
 
@@ -190,11 +200,81 @@ public class DolphinDbWriter extends Writer {
 
         private List<Integer> extras_ = null;
 
+        private long[] nulStrippedCells_ = null;
+
+        private long[] roundedCells_ = null;
+
         private HashMap<Integer, Integer> writeToReadIndexMap;
 
         private boolean useColumnsParamNotEmpty = false;
 
         private static final BigDecimal DECIMAL128_MIN_VALUE = new BigDecimal("-170141183460469231731687303715884105728");
+
+        private static final DateTimeFormatter DDB_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM'M'");
+        private static final DateTimeFormatter DDB_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+        private static final DateTimeFormatter DDB_DATEHOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd'T'HH");
+        private static final DateTimeFormatter DDB_DATETIME_FORMATTER = new DateTimeFormatterBuilder()
+                .appendPattern("yyyy.MM.dd'T'HH:mm:ss")
+                .optionalStart().appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, true).optionalEnd()
+                .toFormatter();
+        private static final Double2 NULL_DOUBLE2 = new Double2(-Double.MAX_VALUE, -Double.MAX_VALUE);
+
+        private LocalDate columnToLocalDate(Column column) {
+            if (column.getRawData() instanceof String) {
+                try {
+                    return LocalDate.parse(column.asString().trim(), DDB_DATE_FORMATTER);
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+            return column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+
+        private LocalTime columnToLocalTime(Column column) {
+            if (column.getRawData() instanceof String) {
+                try {
+                    return LocalTime.parse(column.asString().trim());
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+            return column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
+        }
+
+        private LocalDateTime columnToLocalDateTime(Column column) {
+            if (column.getRawData() instanceof String) {
+                try {
+                    return LocalDateTime.parse(column.asString().trim(), DDB_DATETIME_FORMATTER);
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+            return column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        }
+
+        private static Double2 parseComplexValue(String value) {
+            String body = value.trim();
+            if (body.endsWith("i"))
+                body = body.substring(0, body.length() - 1);
+            int split = -1;
+            for (int i = body.length() - 1; i > 0; i--) {
+                char c = body.charAt(i);
+                if ((c == '+' || c == '-') && body.charAt(i - 1) != 'e' && body.charAt(i - 1) != 'E') {
+                    split = i;
+                    break;
+                }
+            }
+            if (split < 0)
+                throw new IllegalArgumentException("Cannot parse complex value: " + value);
+            return new Double2(Double.parseDouble(body.substring(0, split)), Double.parseDouble(body.substring(split)));
+        }
+
+        private static Double2 parsePointValue(String value) {
+            String body = value.trim();
+            if (body.startsWith("(") && body.endsWith(")"))
+                body = body.substring(1, body.length() - 1);
+            String[] parts = body.split(",");
+            if (parts.length != 2)
+                throw new IllegalArgumentException("Cannot parse point value: " + value);
+            return new Double2(Double.parseDouble(parts[0].trim()), Double.parseDouble(parts[1].trim()));
+        }
 
         @Override
         public void init() {
@@ -275,6 +355,10 @@ public class DolphinDbWriter extends Writer {
                 } else if (fieldArr != null) {
                     initTable(fieldArr);
                 }
+                if (colNames_ != null) {
+                    nulStrippedCells_ = new long[colNames_.size()];
+                    roundedCells_ = new long[colNames_.size()];
+                }
             } catch (IOException e) {
                 LOG.info(saveFunctionDef);
                 throw new RuntimeException(e.getMessage(), e);
@@ -305,6 +389,30 @@ public class DolphinDbWriter extends Writer {
         public void post() {
             LOG.info("post() is invoked.");
             insertToDolphinDB(createUploadTable());
+            if (nulStrippedCells_ != null) {
+                StringBuilder strippedColumns = new StringBuilder();
+                for (int i = 0; i < nulStrippedCells_.length; i++) {
+                    if (nulStrippedCells_[i] > 0) {
+                        if (strippedColumns.length() > 0)
+                            strippedColumns.append(", ");
+                        strippedColumns.append(colNames_.get(i)).append('=').append(nulStrippedCells_[i]);
+                    }
+                }
+                if (strippedColumns.length() > 0)
+                    LOG.warn("Removed NUL(\\u0000) characters from string values, affected cells per column: " + strippedColumns);
+            }
+            if (roundedCells_ != null) {
+                StringBuilder roundedColumns = new StringBuilder();
+                for (int i = 0; i < roundedCells_.length; i++) {
+                    if (roundedCells_[i] > 0) {
+                        if (roundedColumns.length() > 0)
+                            roundedColumns.append(", ");
+                        roundedColumns.append(colNames_.get(i)).append('=').append(roundedCells_[i]);
+                    }
+                }
+                if (roundedColumns.length() > 0)
+                    LOG.warn("Rounded fractional values to integral, affected cells per column: " + roundedColumns);
+            }
         }
 
         @Override
@@ -382,6 +490,12 @@ public class DolphinDbWriter extends Writer {
                     case DT_MONTH:
                         colData.add(Integer.MIN_VALUE);
                         break;
+                    case DT_MINUTE:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
+                    case DT_DATEHOUR:
+                        colData.add(Integer.MIN_VALUE);
+                        break;
                     case DT_DATETIME:
                         colData.add(Integer.MIN_VALUE);
                         break;
@@ -409,13 +523,27 @@ public class DolphinDbWriter extends Writer {
                     case DT_UUID:
                         colData.add(new Long2(0, 0));
                         break;
+                    case DT_IPADDR:
+                        colData.add(new Long2(0, 0));
+                        break;
+                    case DT_INT128:
+                        colData.add(new Long2(0, 0));
+                        break;
+                    case DT_COMPLEX:
+                        colData.add(NULL_DOUBLE2);
+                        break;
+                    case DT_POINT:
+                        colData.add(NULL_DOUBLE2);
+                        break;
                     case DT_SHORT:
                         colData.add(Short.MIN_VALUE);
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
-                    case DT_BLOB:
                         colData.add("");
+                        break;
+                    case DT_BLOB:
+                        colData.add(new byte[0]);
                         break;
                     case DT_BYTE:
                         colData.add((byte) -128);
@@ -434,7 +562,22 @@ public class DolphinDbWriter extends Writer {
                 }
             } catch (Exception e) {
                 LOG.error("Failed to set NULL to column '" + colNames_.get(index) + "'.");
+                throw new RuntimeException("Failed to set NULL to column '" + colNames_.get(index) + "'.", e);
             }
+        }
+
+        private long toIntegral(Column column, long min, long max, int index) {
+            BigDecimal raw = column.getType() == Column.Type.DATE
+                    ? BigDecimal.valueOf(column.asLong())
+                    : column.asBigDecimal();
+            BigDecimal rounded = raw.setScale(0, RoundingMode.HALF_UP);
+            if (raw.compareTo(rounded) != 0) {
+                if (roundedCells_[index]++ == 0)
+                    LOG.warn("Column '{}' values have fractional parts; rounding to nearest integral value (half up) for {}.", colNames_.get(index), Utils.getDataTypeString(colTypes_.get(index)));
+            }
+            if (rounded.compareTo(BigDecimal.valueOf(min)) < 0 || rounded.compareTo(BigDecimal.valueOf(max)) > 0)
+                throw new ArithmeticException("Value " + column.asString() + " is out of range [" + min + ", " + max + "] for " + Utils.getDataTypeString(colTypes_.get(index)) + ".");
+            return rounded.longValue();
         }
 
         private void setData(int index, Column column) {
@@ -452,49 +595,105 @@ public class DolphinDbWriter extends Writer {
                         colData.add(column.asBoolean() ? (byte) 1 : (byte) 0);
                         break;
                     case DT_DATE:
-                        colData.add(Utils.countDays(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
+                        colData.add(Utils.countDays(columnToLocalDate(column)));
                         break;
-                    case DT_MONTH:
-                        LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                        colData.add(Utils.countMonths(d.getYear(), d.getMonthValue()));
+                    case DT_MONTH: {
+                        Integer monthValue = null;
+                        if (column.getRawData() instanceof String) {
+                            try {
+                                monthValue = Utils.countMonths(YearMonth.parse(column.asString().trim(), DDB_MONTH_FORMATTER));
+                            } catch (DateTimeParseException ignored) {
+                            }
+                        }
+                        if (monthValue == null) {
+                            LocalDate d = column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                            monthValue = Utils.countMonths(d.getYear(), d.getMonthValue());
+                        }
+                        colData.add(monthValue);
                         break;
+                    }
+                    case DT_MINUTE: {
+                        Integer minuteValue = null;
+                        if (column.getRawData() instanceof String) {
+                            String minuteStr = column.asString().trim();
+                            if (minuteStr.endsWith("m"))
+                                minuteStr = minuteStr.substring(0, minuteStr.length() - 1);
+                            try {
+                                minuteValue = Utils.countMinutes(LocalTime.parse(minuteStr));
+                            } catch (DateTimeParseException ignored) {
+                            }
+                        }
+                        if (minuteValue == null)
+                            minuteValue = Utils.countMinutes(columnToLocalTime(column));
+                        colData.add(minuteValue);
+                        break;
+                    }
+                    case DT_DATEHOUR: {
+                        Integer hourValue = null;
+                        if (column.getRawData() instanceof String) {
+                            try {
+                                hourValue = Utils.countHours(LocalDateTime.parse(column.asString().trim(), DDB_DATEHOUR_FORMATTER));
+                            } catch (DateTimeParseException ignored) {
+                            }
+                        }
+                        if (hourValue == null)
+                            hourValue = Utils.countHours(columnToLocalDateTime(column));
+                        colData.add(hourValue);
+                        break;
+                    }
                     case DT_DATETIME:
-                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countSeconds(columnToLocalDateTime(column)));
                         break;
                     case DT_TIME:
-                        colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countMilliseconds(columnToLocalTime(column)));
                         break;
                     case DT_SECOND:
-                        colData.add(Utils.countSeconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countSeconds(columnToLocalTime(column)));
                         break;
                     case DT_TIMESTAMP:
-                        colData.add(Utils.countMilliseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countMilliseconds(columnToLocalDateTime(column)));
                         break;
                     case DT_NANOTIME:
-                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalTime()));
+                        colData.add(Utils.countNanoseconds(columnToLocalTime(column)));
                         break;
                     case DT_NANOTIMESTAMP:
-                        colData.add(Utils.countNanoseconds(column.asDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
+                        colData.add(Utils.countNanoseconds(columnToLocalDateTime(column)));
                         break;
                     case DT_LONG:
-                        colData.add(column.asLong());
+                        colData.add(toIntegral(column, Long.MIN_VALUE + 1, Long.MAX_VALUE, index));
                         break;
                     case DT_INT:
-                        colData.add(Integer.parseInt(column.asString()));
+                        colData.add((int) toIntegral(column, Integer.MIN_VALUE + 1L, Integer.MAX_VALUE, index));
                         break;
                     case DT_UUID:
                         colData.add(BasicUuid.fromString(column.asString().trim()).getLong2());
                         break;
+                    case DT_IPADDR:
+                        colData.add(BasicIPAddr.fromString(column.asString().trim()).getLong2());
+                        break;
+                    case DT_INT128:
+                        colData.add(BasicInt128.fromString(column.asString().trim()).getLong2());
+                        break;
+                    case DT_COMPLEX:
+                        colData.add(parseComplexValue(column.asString()));
+                        break;
+                    case DT_POINT:
+                        colData.add(parsePointValue(column.asString()));
+                        break;
                     case DT_SHORT:
-                        colData.add(Short.parseShort(column.asString()));
+                        colData.add((short) toIntegral(column, Short.MIN_VALUE + 1, Short.MAX_VALUE, index));
                         break;
                     case DT_STRING:
                     case DT_SYMBOL:
-                    case DT_BLOB:
                         colData.add(column.asString());
                         break;
+                    case DT_BLOB:
+                        colData.add(column.getRawData() instanceof byte[]
+                                ? column.asBytes()
+                                : column.asString().getBytes(StandardCharsets.UTF_8));
+                        break;
                     case DT_BYTE:
-                        colData.add(column.asBytes());
+                        colData.add((byte) toIntegral(column, Byte.MIN_VALUE + 1, Byte.MAX_VALUE, index));
                         break;
                     case DT_DECIMAL32:
                         colData.add(column.asString());
@@ -528,6 +727,8 @@ public class DolphinDbWriter extends Writer {
                     break;
                 case DT_DATE:
                 case DT_MONTH:
+                case DT_MINUTE:
+                case DT_DATEHOUR:
                 case DT_DATETIME:
                 case DT_TIME:
                 case DT_SECOND:
@@ -541,15 +742,23 @@ public class DolphinDbWriter extends Writer {
                     vec = new ArrayList<Long>();
                     break;
                 case DT_UUID:
+                case DT_IPADDR:
+                case DT_INT128:
                     vec = new ArrayList<Long2>();
+                    break;
+                case DT_COMPLEX:
+                case DT_POINT:
+                    vec = new ArrayList<Double2>();
                     break;
                 case DT_SHORT:
                     vec = new ArrayList<Short>();
                     break;
                 case DT_STRING:
                 case DT_SYMBOL:
-                case DT_BLOB:
                     vec = new ArrayList<String>();
+                    break;
+                case DT_BLOB:
+                    vec = new ArrayList<byte[]>();
                     break;
                 case DT_BYTE:
                     vec = new ArrayList<Byte>();
@@ -560,7 +769,6 @@ public class DolphinDbWriter extends Writer {
                     vec = new ArrayList<BigDecimal>();
                     break;
             }
-            if (vec == null) LOG.info(targetType.toString() + " get Vec is NULL!!!!!");
             return vec;
         }
 
@@ -599,6 +807,12 @@ public class DolphinDbWriter extends Writer {
                     case DT_MONTH:
                         vec = new BasicMonthVector(colData);
                         break;
+                    case DT_MINUTE:
+                        vec = new BasicMinuteVector(colData);
+                        break;
+                    case DT_DATEHOUR:
+                        vec = new BasicDateHourVector(colData);
+                        break;
                     case DT_DATETIME:
                         vec = new BasicDateTimeVector(colData);
                         break;
@@ -626,6 +840,18 @@ public class DolphinDbWriter extends Writer {
                     case DT_UUID:
                         vec = new BasicUuidVector(colData);
                         break;
+                    case DT_IPADDR:
+                        vec = new BasicIPAddrVector(colData);
+                        break;
+                    case DT_INT128:
+                        vec = new BasicInt128Vector(colData);
+                        break;
+                    case DT_COMPLEX:
+                        vec = new BasicComplexVector(colData);
+                        break;
+                    case DT_POINT:
+                        vec = new BasicPointVector(colData);
+                        break;
                     case DT_SHORT:
                         vec = new BasicShortVector(colData);
                         break;
@@ -633,28 +859,35 @@ public class DolphinDbWriter extends Writer {
                     case DT_SYMBOL:
                         List<String> stringList = new ArrayList<>();
                         for (int i = 0; i < colData.size() ; i++) {
-                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            String stringValue = (String) colData.get(i);
+                            if (stringValue.indexOf('\u0000') >= 0) {
+                                stringValue = stringValue.replace("\u0000", "");
+                                if (nulStrippedCells_[column]++ == 0)
+                                    LOG.warn("Column '{}' contains NUL(\\u0000) characters which {} cannot store; removing them and keeping the rest of the value.", colNames_.get(column), targetType);
+                            }
+                            byte[] bytes = stringValue.getBytes();
                             if (bytes.length > 65535) {
-                                stringList.add(((String) colData.get(i)).substring(0, 21845));
+                                stringList.add(stringValue.substring(0, 21845));
                                 LOG.warn("Size of STRING can’t exceed 65535 byte. Cut the String length to 21845. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
                             } else {
-                                stringList.add((String) colData.get(i));
+                                stringList.add(stringValue);
                             }
                         }
                         vec = new BasicStringVector(stringList);
                         break;
                     case DT_BLOB:
-                        List<String> bolbList = new ArrayList<>();
+                        byte[][] blobArr = new byte[colData.size()][];
                         for (int i = 0; i < colData.size() ; i++) {
-                            byte[] bytes = ((String) colData.get(i)).getBytes();
+                            byte[] bytes = (byte[]) colData.get(i);
+                            if (bytes == null)
+                                bytes = new byte[0];
                             if (bytes.length > 4194304) {
-                                bolbList.add(((String) colData.get(i)).substring(0, 1398101));
-                                LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob length to 1398101. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
-                            } else {
-                                bolbList.add((String) colData.get(i));
+                                LOG.warn("Size of BLOB can’t exceed 4194304 byte. Cut the blob to the first 4194304 bytes. Record size: {}, Column name: {}, Row index: {}.",bytes.length,colNames_.get(column),i);
+                                bytes = Arrays.copyOf(bytes, 4194304);
                             }
+                            blobArr[i] = bytes;
                         }
-                        vec = new BasicStringVector(bolbList,true);
+                        vec = new BasicStringVector(blobArr);
                         break;
                     case DT_BYTE:
                         vec = new BasicByteVector(colData);
@@ -764,6 +997,8 @@ public class DolphinDbWriter extends Writer {
                         Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
                         String colName = colNames.getString(i);
                         List colData = getListFromColumn(type);
+                        if (colData == null)
+                            throw new RuntimeException("Column '" + colName + "' type " + Utils.getDataTypeString(type) + " is not supported by dolphindbwriter.");
                         this.colNames_.add(colName);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
@@ -771,6 +1006,7 @@ public class DolphinDbWriter extends Writer {
                     }
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
+                    throw new RuntimeException(e.getMessage(), e);
                 }
             } else {
                 for (int i = 0; i < fieldArr.size(); i++) {
@@ -789,12 +1025,15 @@ public class DolphinDbWriter extends Writer {
                         BasicIntVector extraInt = (BasicIntVector) colDefs.getColumn("extra");
 
                         List colData = getListFromColumn(type);
+                        if (colData == null)
+                            throw new RuntimeException("Column '" + colName + "' type " + Utils.getDataTypeString(type) + " is not supported by dolphindbwriter.");
                         this.colNames_.add(colName);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
                         this.extras_.add(extraInt.getInt(i));
                     } catch (Exception e) {
                         LOG.error(e.getMessage(), e);
+                        throw new RuntimeException(e.getMessage(), e);
                     }
                 }
             }
@@ -824,6 +1063,8 @@ public class DolphinDbWriter extends Writer {
                         Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
                         String colName = colNames.getString(i);
                         List colData = getListFromColumn(type);
+                        if (colData == null)
+                            throw new RuntimeException("Column '" + colName + "' type " + Utils.getDataTypeString(type) + " is not supported by dolphindbwriter.");
                         this.colNames_.add(colName);
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
@@ -831,6 +1072,7 @@ public class DolphinDbWriter extends Writer {
                     }
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
+                    throw new RuntimeException(e.getMessage(), e);
                 }
             } else {
                 this.useColumnsParamNotEmpty = true;
@@ -880,6 +1122,8 @@ public class DolphinDbWriter extends Writer {
                         this.colNames_.add(writerColNames.getString(i));
                         Entity.DATA_TYPE type = Entity.DATA_TYPE.valueOf(colTypeInt.getInt(i));
                         List colData = getListFromColumn(type);
+                        if (colData == null)
+                            throw new RuntimeException("Column '" + writerColNames.getString(i) + "' type " + Utils.getDataTypeString(type) + " is not supported by dolphindbwriter.");
                         this.colDatas_.add(colData);
                         this.colTypes_.add(type);
                         this.extras_.add(extraInt.getInt(i));
@@ -887,6 +1131,7 @@ public class DolphinDbWriter extends Writer {
 
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
+                    throw new RuntimeException(e.getMessage(), e);
                 }
             }
         }
